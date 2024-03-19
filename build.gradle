@@ -1,0 +1,50 @@
+buildscript {
+    ext {
+        junitVersion = '5.10.0'
+        selenideVersion = '7.2.1'
+        allureVersion = '2.24.0'
+    }
+}
+
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.9.22'
+    id 'io.qameta.allure' version '2.11.2'
+    id 'io.qameta.allure-adapter' version '2.11.2'
+}
+
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+allure {
+    version = "2.24.0"
+    adapter {
+        aspectjVersion = "1.9.19"
+    }
+}
+dependencies {
+    //Selenide
+    implementation "com.codeborne:selenide:${selenideVersion}"
+
+    //Jupiter
+    testImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
+
+    //Allure
+    testImplementation "io.qameta.allure:allure-attachments:${allureVersion}"
+    testImplementation("io.qameta.allure:allure-junit5:${allureVersion}") {
+        exclude group: "org.junit.jupiter"
+    }
+    testImplementation("io.qameta.allure:allure-selenide:${allureVersion}") {
+        exclude group: 'com.codeborne'
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+kotlin {
+    jvmToolchain(21)
+}
