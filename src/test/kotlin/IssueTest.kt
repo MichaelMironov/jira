@@ -21,6 +21,7 @@ import org.openqa.selenium.WebDriver
 import org.openqa.selenium.chrome.ChromeDriver
 import org.openqa.selenium.chrome.ChromeOptions
 import org.openqa.selenium.firefox.FirefoxDriver
+import org.openqa.selenium.firefox.FirefoxOptions
 import org.openqa.selenium.remote.RemoteWebDriver
 import java.io.IOException
 import java.net.URL
@@ -31,6 +32,9 @@ class IssueTest {
     @Throws(IOException::class)
     fun initDriver() {
         SelenideLogger.addListener("Allure listener", AllureSelenide())
+        val firefoxOptions = FirefoxOptions()
+        firefoxOptions.setBinary("resources/drivers/geckodriver")
+        WebDriverRunner.setWebDriver(FirefoxDriver(firefoxOptions))
 
 //        val url = "http://192.168.90.245:4444/wd/hub"
 //        val chromeOptions = ChromeOptions()
