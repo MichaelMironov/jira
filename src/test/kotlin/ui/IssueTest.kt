@@ -13,24 +13,31 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.openqa.selenium.Dimension
 import org.openqa.selenium.Keys
+import org.openqa.selenium.WebDriver
+import org.openqa.selenium.chrome.ChromeOptions
+import org.openqa.selenium.remote.RemoteWebDriver
 import java.io.IOException
+import java.net.URL
 
 class IssueTest {
 
     @BeforeEach
     @Throws(IOException::class)
     fun initDriver() {
-        SelenideLogger.addListener("Allure listener", AllureSelenide())
+        val allureSelenide = AllureSelenide()
+        allureSelenide.screenshots(true)
+        SelenideLogger.addListener("Allure listener", allureSelenide)
 //        val firefoxOptions = FirefoxOptions()
-        System.setProperty("webdriver.gecko.driver", "src/test/resources/drivers/geckodriver")
+//        System.setProperty("webdriver.gecko.driver", "src/test/resources/drivers/geckodriver")
 //        WebDriverRunner.setWebDriver(FirefoxDriver(firefoxOptions))
 
-//        val url = "http://192.168.90.245:4444/wd/hub"
-//        val chromeOptions = ChromeOptions()
-//        val driver: WebDriver = RemoteWebDriver(URL(url), chromeOptions)
-//        driver.manage().window().size = Dimension(1920, 1024)
-//        WebDriverRunner.setWebDriver(driver)
+        val url = "http://127.0.0.1:4444/wd/hub"
+        val chromeOptions = ChromeOptions()
+        val driver: WebDriver = RemoteWebDriver(URL(url), chromeOptions)
+        driver.manage().window().size = Dimension(1920, 1024)
+        WebDriverRunner.setWebDriver(driver)
     }
 
     @Test
