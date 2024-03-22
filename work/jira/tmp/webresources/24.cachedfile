@@ -1,0 +1,7 @@
+WRMCB=function(e){var c=console;if(c&&c.log&&c.error){c.log('Error running batched script.');c.error(e);}}
+;
+try {
+/* module-key = 'com.atlassian.jira.plugins.jira-development-integration-plugin:8', location = 'dist/8.27a79d93973e94cca942.js' */
+jiraDevelopmentIntegrationPluginJsonp([8],{14:function(a){a.exports=void 0},"jira.webresources:jquery/require('jquery')":function(a){a.exports=require("jquery")}});
+//# sourceMappingURL=8.27a79d93973e94cca942.js.map
+}catch(e){WRMCB(e)};

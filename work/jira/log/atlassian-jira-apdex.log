@@ -1,0 +1,11 @@
+2024-03-20 14:01:00,089+0000 category: jira.header.menu.admin, apdex: {apdexScore=100, satisfiedCount=1, toleratingCount=0, frustratedCount=0}
+2024-03-20 14:01:00,091+0000 category: jira.projects.versions, apdex: {apdexScore=50, satisfiedCount=0, toleratingCount=1, frustratedCount=0}
+2024-03-20 14:01:00,091+0000 category: jira.dialog.open.create-issue-dialog, apdex: {apdexScore=100, satisfiedCount=1, toleratingCount=0, frustratedCount=0}
+2024-03-20 14:01:00,091+0000 category: jira.agile.work, apdex: {apdexScore=100, satisfiedCount=1, toleratingCount=0, frustratedCount=0}
+2024-03-20 14:01:00,091+0000 category: overall, apdex: {apdexScore=85, satisfiedCount=5, toleratingCount=2, frustratedCount=0}
+2024-03-20 14:01:00,091+0000 category: jira.header.menu.help, apdex: {apdexScore=100, satisfiedCount=1, toleratingCount=0, frustratedCount=0}
+2024-03-20 14:01:00,092+0000 category: jira.agile.plan, apdex: {apdexScore=75, satisfiedCount=1, toleratingCount=1, frustratedCount=0}
+2024-03-20 15:01:00,076+0000 category: jira.header.menu.admin, apdex: {apdexScore=100, satisfiedCount=3, toleratingCount=0, frustratedCount=0}
+2024-03-20 15:01:00,077+0000 category: overall, apdex: {apdexScore=100, satisfiedCount=5, toleratingCount=0, frustratedCount=0}
+2024-03-20 15:01:00,077+0000 category: jira.header.menu.profile, apdex: {apdexScore=100, satisfiedCount=1, toleratingCount=0, frustratedCount=0}
+2024-03-20 15:01:00,077+0000 category: jira.header.menu.help, apdex: {apdexScore=100, satisfiedCount=1, toleratingCount=0, frustratedCount=0}

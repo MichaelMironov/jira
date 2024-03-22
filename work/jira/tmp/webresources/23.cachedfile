@@ -1,0 +1,657 @@
+WRMCB=function(e){var c=console;if(c&&c.log&&c.error){c.log('Error running batched script.');c.error(e);}}
+;
+try {
+/* module-key = 'com.atlassian.gadgets.embedded:gadget-core-resources', location = 'js/rpc.js' */
+var gadgets=gadgets||{};gadgets.rpc=function(){var CALLBACK_NAME="__cb";var DEFAULT_NAME="";var FE_G2C_CHANNEL="__g2c_rpc";var FE_C2G_CHANNEL="__c2g_rpc";var services={};var iframePool=[];var relayUrl={};var useLegacyProtocol={};var authToken={};var callId=0;var callbacks={};var setup={};var sameDomain={};var params={};if(gadgets.util){params=gadgets.util.getUrlParameters()}authToken[".."]=params.rpctoken||params.ifpctok||0;function getRelayChannel(){return typeof window.postMessage==="function"?"wpm":typeof document.postMessage==="function"?"dpm":navigator.product==="Gecko"?"fe":"ifpc"}function setupChannel(){if(relayChannel==="dpm"||relayChannel==="wpm"){window.addEventListener("message",function(packet){try{if(packet&&packet.origin&&packet.origin!=="null"&&typeof packet.data==="string"){if(packet.origin===location.origin){process(gadgets.json.parse(packet.data))}else{AJS.$.get(AJS.contextPath()+"/rest/whitelist/1/check",{url:packet.origin}).done(function(result){if(result&&result.inbound&&result.inbound===true){process(gadgets.json.parse(packet.data))}else{if(AJS.debug){AJS.log("RPC: request rejected (bad origin): "+(packet&&packet.origin?packet.origin:"undefined origin"))}}}).fail(function(jqXHR,textStatus,errorThrown){AJS.log("RPC: REST "+textStatus,errorThrown)})}}else{if(AJS.debug){AJS.log("RPC: request rejected (bad origin): "+(packet&&packet.origin?packet.origin:"undefined origin"))}}}catch(e){if(AJS.debug){var origin=packet&&packet.origin?packet.origin:"undefined origin";AJS.log("Error processing gadget rpc message from '"+origin+"': "+e)}}},false)}}var relayChannel=getRelayChannel();setupChannel();services[DEFAULT_NAME]=function(){throw new Error("Unknown RPC service: "+this.s)};services[CALLBACK_NAME]=function(callbackId,result){var callback=callbacks[callbackId];if(callback){delete callbacks[callbackId];callback(result)}};function setupFrame(frameId){if(setup[frameId]){return }if(relayChannel==="fe"){try{var frame=document.getElementById(frameId);frame[FE_G2C_CHANNEL]=function(args){process(gadgets.json.parse(args))}}catch(e){}}setup[frameId]=true}function encodeLegacyData(args){var stringify=gadgets.json.stringify;var argsEscaped=[];for(var i=0,j=args.length;i<j;++i){argsEscaped.push(encodeURIComponent(stringify(args[i])))}return argsEscaped.join("&")}function process(rpc){if(rpc&&typeof rpc.s==="string"&&typeof rpc.f==="string"&&rpc.a instanceof Array){if(authToken[rpc.f]){if(authToken[rpc.f]!=rpc.t){if(AJS.debug){console.log("Invalid auth token received for operation: "+rpc.s)}return }}if(rpc.c){rpc.callback=function(result){gadgets.rpc.call(rpc.f,CALLBACK_NAME,null,rpc.c,result)}}var result=(services[rpc.s]||services[DEFAULT_NAME]).apply(rpc,rpc.a);if(rpc.c&&typeof result!="undefined"){gadgets.rpc.call(rpc.f,CALLBACK_NAME,null,rpc.c,result)}}}function callFrameElement(targetId,serviceName,from,rpcData,callArgs){try{if(from!=".."){var fe=window.frameElement;if(typeof fe[FE_G2C_CHANNEL]==="function"){if(typeof fe[FE_G2C_CHANNEL][FE_C2G_CHANNEL]!=="function"){fe[FE_G2C_CHANNEL][FE_C2G_CHANNEL]=function(args){process(gadgets.json.parse(args))}}fe[FE_G2C_CHANNEL](rpcData);return }}else{var frame=document.getElementById(targetId);if(typeof frame[FE_G2C_CHANNEL]==="function"&&typeof frame[FE_G2C_CHANNEL][FE_C2G_CHANNEL]==="function"){frame[FE_G2C_CHANNEL][FE_C2G_CHANNEL](rpcData);return }}}catch(e){}callIfpc(targetId,serviceName,from,rpcData,callArgs)}function callIfpc(targetId,serviceName,from,rpcData,callArgs){var relay=gadgets.rpc.getRelayUrl(targetId);if(!relay){throw new Error("No relay file assigned for IFPC")}var src=null;if(useLegacyProtocol[targetId]){src=[relay,"#",encodeLegacyData([from,callId,1,0,encodeLegacyData([from,serviceName,"","",from].concat(callArgs))])].join("")}else{src=[relay,"#",targetId,"&",from,"@",callId,"&1&0&",encodeURIComponent(rpcData)].join("")}emitInvisibleIframe(src)}function emitInvisibleIframe(src){var iframe;for(var i=iframePool.length-1;i>=0;--i){var ifr=iframePool[i];try{if(ifr&&(ifr.recyclable||ifr.readyState==="complete")){ifr.parentNode.removeChild(ifr);if(window.ActiveXObject){iframePool[i]=ifr=null;iframePool.splice(i,1)}else{ifr.recyclable=false;iframe=ifr;break}}}catch(e){}}if(!iframe){iframe=document.createElement("iframe");iframe.style.border=iframe.style.width=iframe.style.height="0px";iframe.style.visibility="hidden";iframe.style.position="absolute";iframe.onload=function(){this.recyclable=true};iframePool.push(iframe)}iframe.src=src;setTimeout(function(){document.body.appendChild(iframe)},0)}function callSameDomain(target,rpc){if(typeof sameDomain[target]==="undefined"){sameDomain[target]=false;var targetEl=null;if(target===".."){targetEl=parent}else{targetEl=frames[target]}try{sameDomain[target]=targetEl.gadgets.rpc.receiveSameDomain}catch(e){}}if(typeof sameDomain[target]==="function"){sameDomain[target](rpc);return true}return false}if(gadgets.config){function init(config){if(config.rpc.parentRelayUrl.substring(0,7)==="http://"){relayUrl[".."]=config.rpc.parentRelayUrl}else{var params=document.location.search.substring(0).split("&");var parentParam="";for(var i=0,param;param=params[i];++i){if(param.indexOf("parent=")===0){parentParam=decodeURIComponent(param.substring(7));break}}relayUrl[".."]=parentParam+config.rpc.parentRelayUrl}useLegacyProtocol[".."]=!!config.rpc.useLegacyProtocol}var requiredConfig={parentRelayUrl:gadgets.config.NonEmptyStringValidator};gadgets.config.register("rpc",requiredConfig,init)}return{register:function(serviceName,handler){if(serviceName==CALLBACK_NAME){throw new Error("Cannot overwrite callback service")}if(serviceName==DEFAULT_NAME){throw new Error("Cannot overwrite default service:"+" use registerDefault")}services[serviceName]=handler},unregister:function(serviceName){if(serviceName==CALLBACK_NAME){throw new Error("Cannot delete callback service")}if(serviceName==DEFAULT_NAME){throw new Error("Cannot delete default service:"+" use unregisterDefault")}delete services[serviceName]},registerDefault:function(handler){services[""]=handler},unregisterDefault:function(){delete services[""]},call:function(targetId,serviceName,callback,var_args){++callId;targetId=targetId||"..";if(callback){callbacks[callId]=callback}var from="..";if(targetId===".."){from=window.name}var rpc={s:serviceName,f:from,c:callback?callId:0,a:Array.prototype.slice.call(arguments,3),t:authToken[targetId]};if(callSameDomain(targetId,rpc)){return }var rpcData=gadgets.json.stringify(rpc);var channelType=relayChannel;if(useLegacyProtocol[targetId]){channelType="ifpc"}switch(channelType){case"dpm":var targetDoc=targetId===".."?parent.document:frames[targetId].document;targetDoc.postMessage(rpcData);break;case"wpm":var targetWin=targetId===".."?parent:frames[targetId];targetWin.postMessage(rpcData,relayUrl[targetId]);break;case"fe":callFrameElement(targetId,serviceName,from,rpcData,rpc.a);break;default:callIfpc(targetId,serviceName,from,rpcData,rpc.a);break}},getRelayUrl:function(targetId){return relayUrl[targetId]},setRelayUrl:function(targetId,url,opt_useLegacy){relayUrl[targetId]=url;useLegacyProtocol[targetId]=!!opt_useLegacy},setAuthToken:function(targetId,token){authToken[targetId]=token;setupFrame(targetId)},getRelayChannel:function(){return relayChannel},receive:function(fragment){if(fragment.length>4){process(gadgets.json.parse(decodeURIComponent(fragment[fragment.length-1])))}},receiveSameDomain:function(rpc){rpc.a=Array.prototype.slice.call(rpc.a);window.setTimeout(function(){process(rpc)},0)}}}();
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.gadgets.embedded:gadget-core-resources', location = 'js/util.js' */
+Function.prototype.inherits=function(parentCtor){function tempCtor(){}tempCtor.prototype=parentCtor.prototype;this.superClass_=parentCtor.prototype;this.prototype=new tempCtor();this.prototype.constructor=this};
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.gadgets.embedded:gadget-core-resources', location = 'js/json.js' */
+var gadgets=gadgets||{};gadgets.json=function(){function f(n){return n<10?"0"+n:n}Date.prototype.toJSON=function(){return[this.getUTCFullYear(),"-",f(this.getUTCMonth()+1),"-",f(this.getUTCDate()),"T",f(this.getUTCHours()),":",f(this.getUTCMinutes()),":",f(this.getUTCSeconds()),"Z"].join("")};var m={"\b":"\\b","\t":"\\t","\n":"\\n","\f":"\\f","\r":"\\r",'"':'\\"',"\\":"\\\\"};function stringify(value){var a,i,k,l,r=/["\\\x00-\x1f\x7f-\x9f]/g,v;switch(typeof value){case"string":return r.test(value)?'"'+value.replace(r,function(a){var c=m[a];if(c){return c}c=a.charCodeAt();return"\\u00"+Math.floor(c/16).toString(16)+(c%16).toString(16)})+'"':'"'+value+'"';case"number":return isFinite(value)?String(value):"null";case"boolean":case"null":return String(value);case"object":if(!value){return"null"}a=[];if(typeof value.length==="number"&&!(value.propertyIsEnumerable("length"))){l=value.length;for(i=0;i<l;i+=1){a.push(stringify(value[i])||"null")}return"["+a.join(",")+"]"}for(k in value){if(value.hasOwnProperty(k)){if(typeof k==="string"){v=stringify(value[k]);if(v){a.push(stringify(k)+":"+v)}}}}return"{"+a.join(",")+"}"}}return{stringify:stringify,parse:function(text){if(/^[\],:{}\s]*$/.test(text.replace(/\\["\\\/b-u]/g,"@").replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g,"]").replace(/(?:^|:|,)(?:\s*\[)+/g,""))){return eval("("+text+")")}return false}}}();
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.gadgets.embedded:gadget-core-resources', location = 'js/gadgets-core.js' */
+var gadgets=gadgets||{};gadgets.error={};gadgets.error.SUBCLASS_RESPONSIBILITY="subclass responsibility";gadgets.error.TO_BE_DONE="to be done";gadgets.log=function(message){if(window.console&&console.log){console.log(message)}else{var logEntry=document.createElement("div");logEntry.className="gadgets-log-entry";logEntry.innerHTML=message;document.body.appendChild(logEntry)}};gadgets.Extensible=function(){};gadgets.Extensible.prototype.setDependencies=function(dependencies){for(var p in dependencies){this[p]=dependencies[p]}};gadgets.Extensible.prototype.getDependencies=function(name){return this[name]};gadgets.UserPrefStore=function(){};gadgets.UserPrefStore.prototype.getPrefs=function(gadget){throw Error(gadgets.error.SUBCLASS_RESPONSIBILITY)};gadgets.UserPrefStore.prototype.savePrefs=function(gadget){throw Error(gadgets.error.SUBCLASS_RESPONSIBILITY)};gadgets.DefaultUserPrefStore=function(){gadgets.UserPrefStore.call(this)};gadgets.DefaultUserPrefStore.inherits(gadgets.UserPrefStore);gadgets.DefaultUserPrefStore.prototype.getPrefs=function(gadget){};gadgets.DefaultUserPrefStore.prototype.savePrefs=function(gadget){};gadgets.GadgetService=function(){};gadgets.GadgetService.prototype.setHeight=function(elementId,height){throw Error(gadgets.error.SUBCLASS_RESPONSIBILITY)};gadgets.GadgetService.prototype.setTitle=function(gadget,title){throw Error(gadgets.error.SUBCLASS_RESPONSIBILITY)};gadgets.GadgetService.prototype.setUserPref=function(id){throw Error(gadgets.error.SUBCLASS_RESPONSIBILITY)};gadgets.IfrGadgetService=function(){gadgets.GadgetService.call(this);var service=this;gadgets.rpc.register("resize_iframe",function(){service.setHeight.apply(this,arguments)});gadgets.rpc.register("set_pref",function(){service.setUserPref.apply(this,arguments)});gadgets.rpc.register("set_title",function(){service.setTitle.apply(this,arguments)});gadgets.rpc.register("requestNavigateTo",function(){service.requestNavigateTo.apply(this,arguments)})};gadgets.IfrGadgetService.inherits(gadgets.GadgetService);gadgets.IfrGadgetService.prototype.setHeight=function(height){if(height>gadgets.container.maxheight_){height=gadgets.container.maxheight_}var element=document.getElementById(this.f);if(element){element.style.height=height+"px"}};gadgets.IfrGadgetService.prototype.requestNavigateTo=function(view,opt_params){var id=this.getGadgetIdFromModuleId(this.f);var url=this.getUrlForView(view);if(opt_params){var paramStr=JSON.stringify(opt_params);if(paramStr.length>0){url+="&appParams="+encodeURIComponent(paramStr)}}if(url&&document.location.href.indexOf(url)==-1){document.location.href=url}};gadgets.IfrGadgetService.prototype.getUrlForView=function(view){if(view==="canvas"){return"/canvas"}else{if(view==="profile"){return"/profile"}else{return null}}};gadgets.IfrGadgetService.prototype.getGadgetIdFromModuleId=function(moduleId){return parseInt(moduleId.match(/_([0-9]+)$/)[1],10)};gadgets.LayoutManager=function(){};gadgets.LayoutManager.prototype.getGadgetChrome=function(gadget){throw Error(gadgets.error.SUBCLASS_RESPONSIBILITY)};gadgets.StaticLayoutManager=function(){gadgets.LayoutManager.call(this)};gadgets.StaticLayoutManager.inherits(gadgets.LayoutManager);gadgets.StaticLayoutManager.prototype.setGadgetChromeIds=function(gadgetChromeIds){this.gadgetChromeIds_=gadgetChromeIds};gadgets.StaticLayoutManager.prototype.getGadgetChrome=function(gadget){var chromeId=this.gadgetChromeIds_[gadget.id];return chromeId?document.getElementById(chromeId):null};gadgets.FloatLeftLayoutManager=function(layoutRootId){gadgets.LayoutManager.call(this);this.layoutRootId_=layoutRootId};gadgets.FloatLeftLayoutManager.inherits(gadgets.LayoutManager);gadgets.FloatLeftLayoutManager.prototype.getGadgetChrome=function(gadget){var layoutRoot=document.getElementById(this.layoutRootId_);if(layoutRoot){var chrome=document.createElement("div");chrome.className="gadgets-gadget-chrome";chrome.style.cssFloat="left";layoutRoot.appendChild(chrome);return chrome}else{return null}};
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.gadgets.embedded:gadget-container-resources', location = 'js/gadgets-container.js' */
+gadgets.Container=function(){this.parentUrl_="http://"+document.location.host;this.country_="ALL";this.language_="ALL";this.view_="default";this.nocache_=1;this.maxheight_=2147483647};gadgets.Container.inherits(gadgets.Extensible);gadgets.Container.prototype.userPrefStore=new gadgets.DefaultUserPrefStore();gadgets.Container.prototype.gadgetService=new gadgets.GadgetService();gadgets.Container.prototype.layoutManager=new gadgets.StaticLayoutManager();gadgets.Container.prototype.setParentUrl=function(url){this.parentUrl_=url};gadgets.Container.prototype.setCountry=function(country){this.country_=country};gadgets.Container.prototype.setNoCache=function(nocache){this.nocache_=nocache};gadgets.Container.prototype.setLanguage=function(language){this.language_=language};gadgets.Container.prototype.setView=function(view){this.view_=view};gadgets.Container.prototype.setMaxHeight=function(maxheight){this.maxheight_=maxheight};gadgets.Container.prototype.getGadgetKey_=function(instanceId){return"gadget_"+instanceId};gadgets.IfrContainer=function(){gadgets.Container.call(this)};gadgets.IfrContainer.inherits(gadgets.Container);gadgets.IfrContainer.prototype.gadgetService=new gadgets.IfrGadgetService();gadgets.IfrContainer.prototype.setParentUrl=function(url){if(!url.match(/^http[s]?:\/\//)){url=document.location.href.match(/^[^?#]+\//)[0]+url}this.parentUrl_=url};gadgets.container=new gadgets.IfrContainer();
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.gadgets.embedded:gadget-standalone-resources', location = 'js/gadgets-standalone.js' */
+new gadgets.IfrGadgetService();gadgets.IfrGadgetService.prototype.setTitle=function(title){};
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:data', location = 'data/web-resource-manager.js' */
+define("jira/projects/data/WRM",window.WRM);
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:projects-api', location = 'page/projects-api.js' */
+define("jira/api/projects",["wrm/data"],function(a){const c=a.claim("project-key"),d=a.claim("project-id"),e=a.claim("project-name"),f=a.claim("project-type");let b=null;return{getCurrentProjectId:function(){return d},getCurrentProjectKey:function(){return c},getCurrentProjectName:function(){return e},getCurrentProjectType:function(){return f},lazilyGetSelectedItemId:function(){null===b?b=a.claim("selected-item-id"):b;return b}}});AJS.namespace("JIRA.API.Projects",null,require("jira/api/projects"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:project-page', location = '/sidebar/navigation/items.js' */
+require(["jquery"],function(a){a(document).on("click",'.aui-nav \x3e [aria-expanded] \x3e a.aui-nav-item[href\x3d"#"]',function(b){b.preventDefault();AJS.navigation(a(this).siblings(".aui-nav")).toggle()})});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'jira.webresources:change-project-type-dialog', location = '/includes/jira/dialog/changeProjectTypeDialog.soy' */
+// This file was automatically generated from changeProjectTypeDialog.soy.
+// Please don't edit this file by hand.
+
+/**
+ * @fileoverview Templates in namespace JIRA.Templates.project.ChangeType.
+ */
+
+if (typeof JIRA == 'undefined') { var JIRA = {}; }
+if (typeof JIRA.Templates == 'undefined') { JIRA.Templates = {}; }
+if (typeof JIRA.Templates.project == 'undefined') { JIRA.Templates.project = {}; }
+if (typeof JIRA.Templates.project.ChangeType == 'undefined') { JIRA.Templates.project.ChangeType = {}; }
+
+
+JIRA.Templates.project.ChangeType.changeProjectTypeDialog = function(opt_data, opt_ignored) {
+  return '<section role="dialog" id="change-project-type-dialog-' + soy.$$escapeHtml(opt_data.projectId) + '" class="aui-layer aui-dialog2 aui-dialog2-medium" hidden><header class="aui-dialog2-header"><h2 class="aui-dialog2-header-main">' + soy.$$escapeHtml('\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u0442\u0438\u043f \u043f\u0440\u043e\u0435\u043a\u0442\u0430') + '</h2></header><div class="aui-dialog2-content"></div><footer class="aui-dialog2-footer"><div class="aui-dialog2-footer-actions form-footer"><div class="icon throbber"></div><button class="aui-button aui-button-primary dialog-change-button hidden">' + soy.$$escapeHtml('\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c') + '</button><button class="aui-button aui-button-link dialog-close-button">' + soy.$$escapeHtml('\u041e\u0442\u043c\u0435\u043d\u0438\u0442\u044c') + '</button></div></footer></section>';
+};
+if (goog.DEBUG) {
+  JIRA.Templates.project.ChangeType.changeProjectTypeDialog.soyTemplateName = 'JIRA.Templates.project.ChangeType.changeProjectTypeDialog';
+}
+
+
+JIRA.Templates.project.ChangeType.changeProjectTypeForm = function(opt_data, opt_ignored) {
+  var output = '<form class="aui change-project-type-form"><div class="form-body"><div class="aui-group project-type-change-group"><div class="aui-item">' + JIRA.Templates.project.ChangeType.projectAvatar(opt_data) + '</div><div class="aui-item project-type-select-group">' + JIRA.Templates.project.ChangeType.projectTypeDropdown({projectTypeKey: opt_data.project.projectTypeKey, projectTypes: opt_data.projectTypes}) + '</div></div></div></form><p>';
+  var helpLinkAnchor__soy21 = '<a href=' + soy.$$escapeHtml(opt_data.helpLink) + ' target="_blank">';
+  output += soy.$$filterNoAutoescape(AJS.format('\u0415\u0441\u043b\u0438 \u0432\u044b \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u0435 \u0442\u0438\u043f \u043f\u0440\u043e\u0435\u043a\u0442\u0430, \u0432\u043e\u0437\u043c\u043e\u0436\u043d\u043e\u0441\u0442\u0438 \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440\u0430 \u0438 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0439 \u0434\u043b\u044f \u0432\u0430\u0448\u0438\u0445 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0435\u0439 \u0442\u043e\u0436\u0435 \u0431\u0443\u0434\u0443\u0442 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u044b. {0}\u041e\u0437\u043d\u0430\u043a\u043e\u043c\u044c\u0442\u0435\u0441\u044c \u0441 \u0440\u0430\u0437\u043b\u0438\u0447\u0438\u044f\u043c\u0438 \u0437\u0434\u0435\u0441\u044c{1}',helpLinkAnchor__soy21,'</a>')) + '</p>';
+  return output;
+};
+if (goog.DEBUG) {
+  JIRA.Templates.project.ChangeType.changeProjectTypeForm.soyTemplateName = 'JIRA.Templates.project.ChangeType.changeProjectTypeForm';
+}
+
+
+JIRA.Templates.project.ChangeType.projectTypeDropdown = function(opt_data, opt_ignored) {
+  var output = '<select class="project-type-select select" name="project-type">';
+  var projectTypeList30 = opt_data.projectTypes;
+  var projectTypeListLen30 = projectTypeList30.length;
+  for (var projectTypeIndex30 = 0; projectTypeIndex30 < projectTypeListLen30; projectTypeIndex30++) {
+    var projectTypeData30 = projectTypeList30[projectTypeIndex30];
+    output += '<option class="imagebacked" data-icon="data:image/svg+xml;base64, ' + soy.$$escapeHtml(projectTypeData30.icon) + '" value="' + soy.$$escapeHtml(projectTypeData30.key) + '" ' + ((projectTypeData30.key == opt_data.projectTypeKey) ? ' selected ' : '') + '>' + soy.$$escapeHtml(projectTypeData30.formattedKey) + '</option>';
+  }
+  output += '</select>';
+  return output;
+};
+if (goog.DEBUG) {
+  JIRA.Templates.project.ChangeType.projectTypeDropdown.soyTemplateName = 'JIRA.Templates.project.ChangeType.projectTypeDropdown';
+}
+
+
+JIRA.Templates.project.ChangeType.updateTargetElement = function(opt_data, opt_ignored) {
+  return '<img src="data:image/svg+xml;base64,' + soy.$$escapeHtml(opt_data.icon) + '" class="project-type-icon" /><span>' + soy.$$escapeHtml(opt_data.formattedKey) + '</span>';
+};
+if (goog.DEBUG) {
+  JIRA.Templates.project.ChangeType.updateTargetElement.soyTemplateName = 'JIRA.Templates.project.ChangeType.updateTargetElement';
+}
+
+
+JIRA.Templates.project.ChangeType.projectAvatar = function(opt_data, opt_ignored) {
+  return '<div class="project-avatar-header"><span class="aui-avatar aui-avatar-large aui-avatar-project"><span class="aui-avatar-inner"><img src="' + soy.$$escapeHtml(opt_data.project.avatarUrls['48x48']) + '" alt="' + soy.$$escapeHtml(opt_data.project.name) + '"></span></span><div class="project-header" title="' + soy.$$escapeHtml(opt_data.project.name) + '">' + soy.$$escapeHtml(opt_data.project.name) + '</div></div>';
+};
+if (goog.DEBUG) {
+  JIRA.Templates.project.ChangeType.projectAvatar.soyTemplateName = 'JIRA.Templates.project.ChangeType.projectAvatar';
+}
+
+
+JIRA.Templates.project.ChangeType.dialogSpinner = function(opt_data, opt_ignored) {
+  return '<div class="dialog-spinner"></div>';
+};
+if (goog.DEBUG) {
+  JIRA.Templates.project.ChangeType.dialogSpinner.soyTemplateName = 'JIRA.Templates.project.ChangeType.dialogSpinner';
+}
+
+
+JIRA.Templates.project.ChangeType.successMsg = function(opt_data, opt_ignored) {
+  return '' + soy.$$escapeHtml(AJS.format('\u0412\u044b \u0442\u043e\u043b\u044c\u043a\u043e \u0447\u0442\u043e \u0438\u0437\u043c\u0435\u043d\u0438\u043b\u0438 {0} \u043d\u0430 \u0442\u0438\u043f \u043f\u0440\u043e\u0435\u043a\u0442\u0430 {1}.',opt_data.projectName,opt_data.projectTypeName));
+};
+if (goog.DEBUG) {
+  JIRA.Templates.project.ChangeType.successMsg.soyTemplateName = 'JIRA.Templates.project.ChangeType.successMsg';
+}
+
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'jira.webresources:change-project-type-dialog', location = '/includes/jira/dialog/changeProjectTypeDialog.js' */
+define("jira/project/admin/change-project-type-dialog",["jira/util/formatter","jquery","underscore","jira/analytics","jira/message","jira/ajs/select/single-select","wrm/context-path"],(function(e,t,o,n,a,r,c){"use strict";function p(r){var p=t(".project-type-select",r.dialogBody).val()[0],d=o.findWhere(r.projectTypes,{key:p});t(".dialog-change-button",r.dialogBody).attr("disabled","disabled");t(t.ajax({url:c()+"/rest/api/2/project/"+r.projectId+"/type/"+p,dataType:"json",contentType:"application/json",type:"PUT"}).done((function(){r.changeProjectTypeDialog.hide();r.onProjectTypeChanged&&r.onProjectTypeChanged(r.trigger,d);a.showSuccessMsg(JIRA.Templates.project.ChangeType.successMsg({projectName:r.projectName,projectTypeName:d.formattedKey}));n.send({name:"administration.projecttype.change",properties:{projectId:r.projectId,sourceProjectType:i(r.sourceProjectType),destinationProjectType:i(p)}})})).fail((function(){t(".aui-dialog2-content",r.dialogBody).prepend(aui.message.error({content:e.format("\u041d\u0430\u043c \u043d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044c \u043f\u0440\u0435\u043e\u0431\u0440\u0430\u0437\u043e\u0432\u0430\u043d\u0438\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430. \u0412\u044b \u043c\u043e\u0436\u0435\u0442\u0435 \u043e\u0431\u043d\u043e\u0432\u0438\u0442\u044c \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0443 \u0438 \u043f\u043e\u043f\u0440\u043e\u0431\u043e\u0432\u0430\u0442\u044c \u0441\u043d\u043e\u0432\u0430. \u0415\u0441\u043b\u0438 \u044d\u0442\u043e \u043d\u0435 \u043f\u043e\u043c\u043e\u0436\u0435\u0442, \u0441\u0432\u044f\u0436\u0438\u0442\u0435\u0441\u044c \u0441\u043e {0}\u0441\u043b\u0443\u0436\u0431\u043e\u0439 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0438{1}.",'<a href="https://support.atlassian.com/">',"</a>")}))}))).throbber({target:t(".throbber",r.dialogBody)})}function i(e){return e&&e.replace("_","")}function d(e,t,o){e==t?o.find(".dialog-change-button").attr("disabled","disabled"):o.find(".dialog-change-button").removeAttr("disabled")}function s(o){var n=t(JIRA.Templates.project.ChangeType.changeProjectTypeDialog({projectId:o.projectId})),a=AJS.dialog2(n);a.on("show",(function(){t(".aui-dialog2-content",n).html(JIRA.Templates.project.ChangeType.dialogSpinner());t(".dialog-spinner",n).spin();t(".dialog-change-button",n).unbind("click").addClass("hidden")}));t(o.trigger).click((function(i){i.preventDefault();a.show();(s=o.projectId,t.ajax({url:c()+"/rest/internal/2/projects/"+s+"/changetypedata",dataType:"json",contentType:"application/json",type:"GET"})).done((function(e){n.find(".aui-dialog2-content").html(JIRA.Templates.project.ChangeType.changeProjectTypeForm(e));new r({element:t(".project-type-select",n),revertOnInvalid:!0,width:165});n.find(".dialog-change-button").removeClass("hidden");d(t(".project-type-select",n).val(),e.project.projectTypeKey,n);var c={dialogBody:n,changeProjectTypeDialog:a,projectName:e.project.name,projectTypes:e.projectTypes,trigger:o.trigger,projectId:o.projectId,onProjectTypeChanged:o.onProjectTypeChanged,sourceProjectType:e.project.projectTypeKey};t(".dialog-change-button",n).click((function(e){e.preventDefault();p(c)}));t(".change-project-type-form",n).on("submit",(function(e){e.preventDefault();p(c)}));t(".project-type-select",n).on("change",(function(){d(t(this).val(),e.project.projectTypeKey,n)}))})).fail((function(){t(".aui-dialog2-content",n).html(aui.message.error({content:e.format("\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0434\u0430\u043d\u043d\u044b\u0435, \u0442\u0440\u0435\u0431\u0443\u0435\u043c\u044b\u0435 \u0434\u043b\u044f \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f \u0442\u0438\u043f\u0430 \u043f\u0440\u043e\u0435\u043a\u0442\u0430. \u0412\u044b \u043c\u043e\u0436\u0435\u0442\u0435 \u043e\u0431\u043d\u043e\u0432\u0438\u0442\u044c \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0443 \u0438 \u043f\u043e\u043f\u0440\u043e\u0431\u043e\u0432\u0430\u0442\u044c \u0441\u043d\u043e\u0432\u0430. \u0415\u0441\u043b\u0438 \u044d\u0442\u043e \u043d\u0435 \u043f\u043e\u043c\u043e\u0436\u0435\u0442, \u0441\u0432\u044f\u0436\u0438\u0442\u0435\u0441\u044c \u0441\u043e {0}\u0441\u043b\u0443\u0436\u0431\u043e\u0439 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0438{1}.",'<a href="https://support.atlassian.com/">',"</a>")}))}));var s}));t(".dialog-close-button",n).click((function(e){e.preventDefault();a.hide()}))}return function(e){s(e)}}));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'jira.webresources:project-type-warning', location = '/static/projecttypes/warning/dialog/project-type-warning-dialog.js' */
+define("jira/project/types/warning/dialog",["require"],(function(e){"use strict";var t=e("jquery"),a=e("wrm/data"),n=e("aui/inline-dialog");var r=a.claim("project.type.warning.dialogs.data");return{init:function(a){(a=a||{}).sectionElement=a.sectionElement||t("body");!function(a,r,i){var o=t(".project-type-warning-icon",i);n(o,"uninstalled-warning-dialog",(function(n,i,o){n.html(JIRA.Project.Types.Warning.dialog({title:a.title,firstParagraph:a.firstParagraph,secondParagraph:a.secondParagraph,callToActionText:a.callToActionText}));e("jira/project/admin/change-project-type-dialog")({trigger:t(".warning-dialog-change-project-type"),projectId:a.projectId,onProjectTypeChanged:r});o();return!1}),{width:375,gravity:"w"})}(r||a.data,a.onProjectTypeChanged,a.sectionElement)}}}));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'jira.webresources:project-type-warning', location = '/static/projecttypes/warning/dialog/templates/templates.soy' */
+// This file was automatically generated from templates.soy.
+// Please don't edit this file by hand.
+
+/**
+ * @fileoverview Templates in namespace JIRA.Project.Types.Warning.
+ */
+
+if (typeof JIRA == 'undefined') { var JIRA = {}; }
+if (typeof JIRA.Project == 'undefined') { JIRA.Project = {}; }
+if (typeof JIRA.Project.Types == 'undefined') { JIRA.Project.Types = {}; }
+if (typeof JIRA.Project.Types.Warning == 'undefined') { JIRA.Project.Types.Warning = {}; }
+
+
+JIRA.Project.Types.Warning.dialog = function(opt_data, opt_ignored) {
+  return '<div class="project-type-warning-dialog"><p class="header"><span>' + soy.$$escapeHtml(opt_data.title) + '</span></p><p class="type-not-accessible-message">' + soy.$$escapeHtml(opt_data.firstParagraph) + '</p><p class="available-functionality-message">' + soy.$$escapeHtml(opt_data.secondParagraph) + '</p><div class="actions"><a class="warning-dialog-change-project-type" href="#">' + soy.$$escapeHtml(opt_data.callToActionText) + '</a></div></div>';
+};
+if (goog.DEBUG) {
+  JIRA.Project.Types.Warning.dialog.soyTemplateName = 'JIRA.Project.Types.Warning.dialog';
+}
+
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-component', location = '/sidebar/component/navigation-item.js' */
+define("jira/projects/sidebar/component/navigation-item",["jira/util/browser","jira/projects/libs/marionette"],function(b,c){return c.CompositeView.extend({ui:{link:"a.aui-nav-item"},events:{'simpleClick @ui.link:not([target\x3d"_blank"])':function(a){a.preventDefault();this.navigate()}},initialize:function(){this.id=this.$el.find("\x3ea").attr("data-link-id");this.bindUIElements()},onDestroy:function(){this.unbind()},getElement:function(){return this.el},navigate:function(){if(this.select()){if(this.triggerPreventable("before:navigate").isPrevented)return!1;
+var a=this.ui.link.attr("href");a&&b.reloadViaWindowLocation(a);return!0}},select:function(){var a=this.triggerPreventable("before:select");if(a.isPrevented)return!1;this.$el.addClass("aui-nav-selected");this.$el.find("a").attr("aria-current","page");this.trigger("select",a);return!0},deselect:function(){if(!this.isSelected())return!0;var a=this.triggerPreventable("before:deselect");if(a.isPrevented)return!1;this.$el.removeClass("aui-nav-selected");this.$el.find("a").removeAttr("aria-current").blur();
+this.trigger("deselect",a);return!0},isSelected:function(){return this.$el.hasClass("aui-nav-selected")},removeBadge:function(){this.$el.find(".aui-badge").remove()},getId:function(){return this.id},getSelectedNavigationItem:function(){if(this.isSelected())return this},hasASelectedItem:function(){return this.isSelected()}})});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-component', location = '/sidebar/component/navigation-group.js' */
+define("jira/projects/sidebar/component/navigation-group",["jira/projects/sidebar/component/navigation-group-factory","jira/projects/libs/marionette","jira/util/logger"],function(c,d,e){return d.CompositeView.extend({childEvents:{"before:select":function(a,b){this.retriggerPreventable("before:select",b);b.isPrevented||this.deselect()||b.preventDefault()},select:function(a,b){this.trigger("select",b)},"before:deselect":function(a,b){this.retriggerPreventable("before:deselect",b)},deselect:function(a,
+b){this.trigger("deselect",b)},"before:navigate":function(a,b){this.retriggerPreventable("before:navigate",b)},"before:navigate:prevented":function(a,b){this.trigger("before:navigate:prevented",b)}},initialize:function(){this.id=this.$el.attr("data-id");this.$("\x3eul\x3eli").each(function(a,b){a=c.build(b);this.getItem(a.id)&&e.warn("Duplicated IDs detected. There are more than one NavigationItem with id data-link-id\x3d'"+a.id+"'");this.proxyChildEvents(a);this.children.add(a,a.id)}.bind(this))},
+onDestroy:function(){this.unbind()},getElement:function(){return this.el},deselect:function(){if(this.triggerPreventable("before:deselect").isPrevented)return!1;var a=!0;this.children.each(function(b){a=b.deselect()&&a});return a},getItem:function(a){return this.children.findByCustom(a)},getItemAt:function(a){return this.children.findByIndex(a)},getSelectedNavigationItem:function(){var a=this.children.find(function(a){return a.hasASelectedItem()});if(a)return a.getSelectedNavigationItem()},hasASelectedItem:function(){return this.children.any(function(a){return a.hasASelectedItem()})}})});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-component', location = '/sidebar/component/navigation-subgroup.js' */
+define("jira/projects/sidebar/component/navigation-subgroup",["jira/projects/sidebar/component/navigation-group","underscore"],function(b,c){return b.extend({childEvents:{"before:select":function(a,d){b.prototype.childEvents["before:select"].apply(this,arguments);d.isPrevented||this.expand()}},initialize:function(){this.childEvents=c.extend({},b.prototype.childEvents,this.childEvents);b.prototype.initialize.apply(this,arguments);this.id=this.$el.find("\x3ea[data-link-id]").attr("data-link-id")},expand:function(){this.$el.attr("aria-expanded",
+"true")},collapse:function(){this.$el.attr("aria-expanded","false")},isExpanded:function(){return"true"===this.$el.attr("aria-expanded")},isSelected:function(){return this.$el.hasClass("aui-nav-selected")},getId:function(){return this.id},getSelectedNavigationItem:function(){if(this.isSelected())return this;var a=this.children.find(function(a){return a.hasASelectedItem()});if(a)return a.getSelectedNavigationItem()},hasASelectedItem:function(){return this.isSelected()?!0:this.children.any(function(a){return a.hasASelectedItem()})}})});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-component', location = '/sidebar/component/navigation-group-factory.js' */
+define("jira/projects/sidebar/component/navigation-group-factory",["exports","jira/projects/sidebar/component/navigation-item","jira/projects/sidebar/component/navigation-subgroup","jquery"],function(b,c,d,e){b.build=function(a){return e(a).find("ul").length?new d({el:a}):new c({el:a})}});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-component', location = '/sidebar/component/component.js' */
+define("jira/projects/sidebar/component","jira/projects/sidebar/component/navigation-group jira/projects/libs/marionette jira/util/logger wrm/data jquery underscore".split(" "),function(e,f,g,h,k,d){return f.CompositeView.extend({childEvents:{"before:select":function(a,b){this.hasASelectedItem()||(b.isInitial=!0);this.retriggerPreventable("before:select",b);b.isPrevented||this.deselectAllGroups()},select:function(a,b){this.trigger("select",b)},"before:deselect":function(a,b){this.retriggerPreventable("before:deselect",
+b)},deselect:function(a,b){this.trigger("deselect",b)},"before:navigate":function(a,b){this.retriggerPreventable("before:navigate",b)},"before:navigate:prevented":function(a,b){this.trigger("before:navigate:prevented",b)}},initialize:function({isGlobalSidebar:a}){this.isGlobalSidebar="undefined"===typeof a?!0===h.claim("is-global-sidebar"):a;this.render({force:!0})},render:function(a){a=d.defaults({},a,{force:!1});var b="el"in a,c=0<this.children.length;if(!b&&!0!==a.force||this.triggerPreventable("before:render").isPrevented)return this;
+if(c){if(this.triggerPreventable("before:detach").isPrevented)return this;this.destroyChildren({checkEmpty:!1});this.trigger("detach")}b&&(a=k(a.el),this.$el.replaceWith(a),this.setElement(a));this.$(".aui-sidebar-group").each(d.bind(function(a,b){a=new e({el:b});this.getGroup(a.id)&&g.warn('Duplicated IDs detected. There are more than one NavigationGroup with id data-id\x3d"'+a.id+'"');this.proxyChildEvents(a);this.children.add(a,a.id)},this));this.trigger("render");return this},deselectAllGroups:function(){this.children.call("deselect")},
+replaceGroup:function(a,b){a=this.getGroup(a);a.$el.replaceWith(b.$el);b.cid=a.cid;this.children.remove(a);this.children.add(b,b.id)},getGroup:function(a){return this.children.findByCustom(a)},getGroupAt:function(a){return this.children.findByIndex(a)},getItem:function(a){return this.getDefaultGroup().getItem(a)},getElement:function(){return this.el},getDefaultGroup:function(){return this.getGroup("sidebar-navigation-panel")},isProjectSidebar:function(){return!this.isGlobalSidebar},getSelectedScopeFilterId:function(){return this.$(".scope-filter a.scope-filter-trigger").attr("data-scope-filter-id")},
+setReportsItemLink:function(a){var b=this.getGroup("sidebar-navigation-panel"),c=b.getItem("com.atlassian.jira.jira-projects-plugin:report-page");"undefined"===typeof c&&(c=b.getItem("com.pyxis.greenhopper.jira:global-sidebar-report"));c&&c.ui.link.attr("href",a)},getAUISidebar:function(){return AJS.sidebar(".aui-sidebar")},getContentContainer:function(){return this.$(".aui-sidebar-body .sidebar-content-container")},getSelectedNavigationItem:function(){return this.getDefaultGroup().getSelectedNavigationItem()},
+hasASelectedItem:function(){return this.getDefaultGroup().hasASelectedItem()},dim:function(){this.$el.attr({dimmed:"","aria-hidden":"true"})},undim:function(){this.$el.removeAttr("dimmed");this.$el.removeAttr("aria-hidden")}})});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-component', location = '/sidebar/component/component-namespaces.js' */
+(function(){var a=require("jira/projects/sidebar/component/navigation-group-factory"),b=require("jira/projects/sidebar/component");AJS.namespace("JIRA.Projects.Sidebar.Component",null,b);AJS.namespace("JIRA.Projects.Sidebar.Component.NavigationItem",null,require("jira/projects/sidebar/component/navigation-item"));AJS.namespace("JIRA.Projects.Sidebar.Component.NavigationSubgroup",null,require("jira/projects/sidebar/component/navigation-subgroup"));AJS.namespace("JIRA.Projects.Sidebar.Component.NavigationGroup",
+null,require("jira/projects/sidebar/component/navigation-group"));AJS.namespace("JIRA.Projects.Sidebar.Component.NavigationGroup.build",null,a.build)})();
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-analytics', location = '/sidebar/analytics/hash.js' */
+define("jira/projects/sidebar/analytics/hash",["underscore"],function(e){function g(a,b){return 0===a.indexOf(b)}var d=[];return{prefixedHash:function(a){var b=e.find(d,e.partial(g,a))||"";a=a.substring(g(a,b)?b.length:0);var c=0;if(a){for(var f=0;f<a.length;f+=1){var h=a.charCodeAt(f);c=32*c-c+h;c|=0}a=c}else a="";return{prefix:b,hash:b+a}},addPrefix:function(a){a&&!e.contains(d,a)&&d.push(a)},clearPrefixes:function(){d.length=0}}});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-analytics', location = '/sidebar/analytics/analytics.js' */
+define("jira/projects/sidebar/analytics/analytics",["jira/api/projects/sidebar","jira/projects/sidebar/analytics/hash","jira/util/data/meta","jira/analytics","jquery"],function(g,h,k,l,d){function e(a,c){l.send({name:"jira.project.centric.navigation.sidebar."+a,data:c})}function m(a){a=a.getAUISidebar();var c=d();c=c.add(a.$el);c=c.add(a.submenus.inlineDialog);c.on("click","a",function(){var b=d(this).attr("data-link-id");b=h.prefixedHash(b||"NONE");b={id:b.hash,prefix:b.prefix};var a=k.get("sidebar-source-page");
+a?b.sidebarSourcePage=a:0<d(".issue-tools button.expand").length?b.sidebarSourcePage="search-el":0<d(".navigation-tools button.collapse").length?b.sidebarSourcePage="fullscreen-el":"atl.jira.proj.config"===d('meta[name\x3d"admin.active.section"]').attr("content")&&(a=d('meta[name\x3d"admin.active.tab"]').attr("content"),a=a.replace("com.atlassian.servicedesk.project-ui:",""),-1!==f.indexOf(["proj.config",a].join("."))?b.sidebarSourcePage=["proj.config",a].join("."):b.sidebarSourcePage="proj.config");
+-1===f.indexOf(b.sidebarSourcePage)&&(b.sidebarSourcePage="unknown");e("click.link",b)})}var f="search-el fullscreen-el search fullscreen rapid-board service-desk proj.config proj.config.view_project_summary proj.config.view_project_issuetypes proj.config.project-issuetypes-expand proj.config.view_project_workflows proj.config.view_project_screens proj.config.view_project_fields proj.config.view_project_versions proj.config.view_project_components proj.config.view_project_roles proj.config.view_project_permissions proj.config.view_project_issuesecurity proj.config.view_project_notifications proj.config.devstatus-admin-page-link proj.config.hipchat-project-admin-page-link proj.config.view_issue_collectors proj.config.sd-project-request-types-item proj.config.sd-project-request-security-item proj.config.sd-project-portal-settings-item proj.config.sd-project-feedback-settings-item proj.config.sd-project-email-settings-item proj.config.sd-project-confluence-kb-item proj.config.sd-project-sidebar-sla proj.config.sd-project-automation-item".split(" ");
+return{register:function(){g.getSidebar().done(function(a){a.isProjectSidebar()?e("load.project"):e("load.global");m(a)})}}});AJS.namespace("JIRA.Projects.Sidebar.Analytics",null,require("jira/projects/sidebar/analytics/analytics"));AJS.namespace("JIRA.Projects.Sidebar.Analytics.Hash",null,require("jira/projects/sidebar/analytics/hash"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-expansion-manager', location = '/sidebar/expansion-manager.js' */
+define("jira/projects/sidebar/expansion-manager",["wrm/data"],function(c){var d=!!c.claim("sidebar-collapsed-by-default");return function(a,b){b||(b=window.localStorage);a.reflow()&&a.isViewportNarrow()||(d&&void 0===b["jira-sidebar-collapsed"]||"true"===b["jira-sidebar-collapsed"]?a.collapse():a.expand());a.on("expand-start",function(a){a.isResponsive&&"true"===b["jira-sidebar-collapsed"]&&a.preventDefault()});a.on("expand-end collapse-end",function(c){c.isResponsive||a.isViewportNarrow()||(b["jira-sidebar-collapsed"]=
+a.isCollapsed().toString())})}});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:scope-filter', location = '/sidebar/scopefilter/templates.soy' */
+// This file was automatically generated from templates.soy.
+// Please don't edit this file by hand.
+
+/**
+ * @fileoverview Templates in namespace JIRA.Projects.Sidebar.ScopeFilter.Templates.
+ */
+
+if (typeof JIRA == 'undefined') { var JIRA = {}; }
+if (typeof JIRA.Projects == 'undefined') { JIRA.Projects = {}; }
+if (typeof JIRA.Projects.Sidebar == 'undefined') { JIRA.Projects.Sidebar = {}; }
+if (typeof JIRA.Projects.Sidebar.ScopeFilter == 'undefined') { JIRA.Projects.Sidebar.ScopeFilter = {}; }
+if (typeof JIRA.Projects.Sidebar.ScopeFilter.Templates == 'undefined') { JIRA.Projects.Sidebar.ScopeFilter.Templates = {}; }
+
+
+JIRA.Projects.Sidebar.ScopeFilter.Templates.collapsedContainer = function(opt_data, opt_ignored) {
+  return '<div role="button" class="aui-sidebar-group aui-sidebar-group-actions collapsed-scope-filter-container" tabindex="0" aria-label="' + soy.$$escapeHtml('\u041f\u0430\u043d\u0435\u043b\u0438 \u0432 \u044d\u0442\u043e\u043c \u043f\u0440\u043e\u0435\u043a\u0442\u0435') + '"><!-- AUI sidebar does a if (!hasSubmenu) check while initializing submenu hence we need aui-nav element even if it is empty, so that our sidebar group gets properly initialized --><ul class="aui-nav"><!-- On first hover, while we are waiting for data, this content will be displayed in submenu inline dialog. Once we have data we will replace this with the actual data in DOM. Any further hover will clone the new DOM structure (actual data without progress indicator) and display in the submenu dialog. This is the only way I could find to pass a progress indicator to submenu inside dialog, because AUI does a destructive `submenuInlineDialog.innerHTML=` AFTER `sidebarSubmenuBeforeShow` event handler is executed, hence losing anything injected from it--><li><aui-spinner size="small" style="margin: auto"/></li></ul></div>';
+};
+if (goog.DEBUG) {
+  JIRA.Projects.Sidebar.ScopeFilter.Templates.collapsedContainer.soyTemplateName = 'JIRA.Projects.Sidebar.ScopeFilter.Templates.collapsedContainer';
+}
+
+
+JIRA.Projects.Sidebar.ScopeFilter.Templates.collapsedScopeList = function(opt_data, opt_ignored) {
+  opt_data = opt_data || {};
+  var output = '';
+  if (opt_data.selectableScopes || opt_data.createActions) {
+    output += '<div class="aui-nav-heading" title="' + soy.$$escapeHtml('\u041f\u0430\u043d\u0435\u043b\u0438 \u0432 \u044d\u0442\u043e\u043c \u043f\u0440\u043e\u0435\u043a\u0442\u0435') + '"><strong class="collapsed-scope-header">' + soy.$$escapeHtml('\u041f\u0430\u043d\u0435\u043b\u0438 \u0432 \u044d\u0442\u043e\u043c \u043f\u0440\u043e\u0435\u043a\u0442\u0435') + '</strong></div><ul class="aui-nav collapsed-scope-list" title="' + soy.$$escapeHtml('\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043f\u0430\u043d\u0435\u043b\u044c') + '">';
+    if (opt_data.selectedScope) {
+      output += '<li class="scope-filter selected-scope-filter" title="' + soy.$$escapeHtml(opt_data.selectedScope.label) + '">' + soy.$$escapeHtml(opt_data.selectedScope.label) + '</li>';
+      var scopeFilterList23 = opt_data.selectableScopes;
+      var scopeFilterListLen23 = scopeFilterList23.length;
+      for (var scopeFilterIndex23 = 0; scopeFilterIndex23 < scopeFilterListLen23; scopeFilterIndex23++) {
+        var scopeFilterData23 = scopeFilterList23[scopeFilterIndex23];
+        output += JIRA.Projects.Sidebar.ScopeFilter.Templates.collapsedSelectableItem({itemClass: 'scope-filter', anchorClass: scopeFilterData23.styleClass, label: scopeFilterData23.label, link: scopeFilterData23.link});
+      }
+    }
+    if (opt_data.createActions && opt_data.createActions[0]) {
+      output += '<hr/>';
+      var createActionList33 = opt_data.createActions;
+      var createActionListLen33 = createActionList33.length;
+      for (var createActionIndex33 = 0; createActionIndex33 < createActionListLen33; createActionIndex33++) {
+        var createActionData33 = createActionList33[createActionIndex33];
+        output += JIRA.Projects.Sidebar.ScopeFilter.Templates.collapsedSelectableItem({itemClass: 'create-scope-action', anchorClass: createActionData33.styleClass, label: createActionData33.label, link: createActionData33.link});
+      }
+    }
+    output += '</ul>';
+  }
+  return output;
+};
+if (goog.DEBUG) {
+  JIRA.Projects.Sidebar.ScopeFilter.Templates.collapsedScopeList.soyTemplateName = 'JIRA.Projects.Sidebar.ScopeFilter.Templates.collapsedScopeList';
+}
+
+
+JIRA.Projects.Sidebar.ScopeFilter.Templates.scopeListError = function(opt_data, opt_ignored) {
+  return '<div class="scope-filter-error-message-container"><div class="scope-filter-error-message">' + soy.$$escapeHtml('\u041d\u0435 \u0443\u0434\u0430\u0435\u0442\u0441\u044f \u043f\u043e\u043b\u0443\u0447\u0438\u0442\u044c \u0441\u043f\u0438\u0441\u043e\u043a \u0434\u043e\u0441\u043e\u043a.') + '</div><div class="aui-button aui-button-compact">' + soy.$$escapeHtml('\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u0435 \u043f\u043e\u043f\u044b\u0442\u043a\u0443') + '</div></div>';
+};
+if (goog.DEBUG) {
+  JIRA.Projects.Sidebar.ScopeFilter.Templates.scopeListError.soyTemplateName = 'JIRA.Projects.Sidebar.ScopeFilter.Templates.scopeListError';
+}
+
+
+JIRA.Projects.Sidebar.ScopeFilter.Templates.collapsedSelectableItem = function(opt_data, opt_ignored) {
+  return '<li class="' + soy.$$escapeHtml(opt_data.itemClass) + '"><a href="' + soy.$$escapeHtml(opt_data.link) + '" title="' + soy.$$escapeHtml(opt_data.label) + '"' + ((opt_data.anchorClass) ? ' class="' + soy.$$escapeHtml(opt_data.anchorClass) + '"' : '') + '>' + soy.$$escapeHtml(opt_data.label) + '</a></li>';
+};
+if (goog.DEBUG) {
+  JIRA.Projects.Sidebar.ScopeFilter.Templates.collapsedSelectableItem.soyTemplateName = 'JIRA.Projects.Sidebar.ScopeFilter.Templates.collapsedSelectableItem';
+}
+
+
+JIRA.Projects.Sidebar.ScopeFilter.Templates.renderScopefilterItems = function(opt_data, opt_ignored) {
+  opt_data = opt_data || {};
+  var output = '';
+  if (opt_data.scopeFilterItems.length > 0) {
+    output += '<div class="aui-dropdown2-section"><strong>' + soy.$$escapeHtml('\u041f\u0430\u043d\u0435\u043b\u0438 \u0432 \u044d\u0442\u043e\u043c \u043f\u0440\u043e\u0435\u043a\u0442\u0435') + '</strong><ul class="aui-list-truncate">';
+    var itemList69 = opt_data.scopeFilterItems;
+    var itemListLen69 = itemList69.length;
+    for (var itemIndex69 = 0; itemIndex69 < itemListLen69; itemIndex69++) {
+      var itemData69 = itemList69[itemIndex69];
+      output += '<li><a href="' + soy.$$escapeHtml(itemData69.link) + '" title="' + soy.$$escapeHtml(itemData69.label) + '" data-scope-filter-id="' + soy.$$escapeHtml(itemData69.id) + '">' + soy.$$escapeHtml(itemData69.label) + '</a></li>';
+    }
+    output += '</ul></div>';
+  } else if (! opt_data.canCreateScope) {
+    output += '<div class="aui-dropdown2-section"><strong>' + soy.$$escapeHtml('\u041f\u0430\u043d\u0435\u043b\u0438 \u0432 \u044d\u0442\u043e\u043c \u043f\u0440\u043e\u0435\u043a\u0442\u0435') + '</strong><div class="empty-boards-list">' + soy.$$escapeHtml('\u041d\u0435\u0442 \u0434\u043e\u0441\u043e\u043a \u0434\u043b\u044f \u043f\u043e\u043a\u0430\u0437\u0430') + '</div></div>';
+  }
+  return output;
+};
+if (goog.DEBUG) {
+  JIRA.Projects.Sidebar.ScopeFilter.Templates.renderScopefilterItems.soyTemplateName = 'JIRA.Projects.Sidebar.ScopeFilter.Templates.renderScopefilterItems';
+}
+
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:scope-filter', location = '/sidebar/scopefilter/templates.js' */
+define("jira/projects/sidebar/scopefilter/templates",function(){return JIRA.Projects.Sidebar.ScopeFilter.Templates});AJS.namespace("JIRA.Projects.Sidebar.ScopeFilter.Templates",null,require("jira/projects/sidebar/scopefilter/templates"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:scope-filter', location = '/sidebar/scopefilter/model.js' */
+define("jira/projects/sidebar/scopefilter/model",["underscore","jira/api/projects"],function(c,d){var b=function(a){this.selectedScope=null;this.createScopeActions=[];this.selectableScopes=[];this.setData(a)};b.prototype.setData=function(a){a&&(a.selectedScope&&(this.selectedScope=a.selectedScope),a.createScopeActions.length&&(this.createScopeActions=a.createScopeActions),a.scopes.length&&(this.selectableScopes=a.selectedScope?c.reject(a.scopes,function(a){return a.label===this.selectedScope.label&&
+a.link===this.selectedScope.link},this):a.scopes))};b.prototype.getSelectedScope=function(){return this.selectedScope};b.prototype.getSelectableScopes=function(){return this.selectableScopes};b.prototype.getCreateScopeActions=function(){return this.createScopeActions};b.prototype.shouldDisplayWhenSidebarIsCollapsed=function(){const a=d.getCurrentProjectType();return"service_desk"!==a&&"business"!==a};return b});AJS.namespace("JIRA.Projects.Sidebar.ScopeFilter.Model",null,require("jira/projects/sidebar/scopefilter/model"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:scope-filter', location = '/sidebar/scopefilter/scopeFilterDropdownView.js' */
+define("jira/projects/sidebar/scopefilter/scopefilter-view",["jquery","jira/projects/libs/marionette","jira/projects/sidebar/scopefilter/templates"],function(c,d,b){return d.ItemView.extend({template:b.renderScopefilterItems,events:{"aui-dropdown2-show":"show"},initialize:function(a){this.controller=a.controller;this.rendered=!1},show:function(){if(!this.rendered){var a=c('\x3caui-spinner size\x3d"small"/\x3e').css("margin","auto");this.$el.prepend(a);this.$el.addClass("data-load-in-progress");this.controller.fetchScopeFilterList().then(this.onFetchSuccess.bind(this)).fail(this.onFetchFail.bind(this)).always(function(){this.$el.addClass("data-load-finished").removeClass("data-load-in-progress");
+a.remove()}.bind(this))}},onFetchSuccess:function(){this.$el.addClass("data-load-success");var a=this.model.getSelectableScopes(),b=!!this.model.getCreateScopeActions().length;a&&(a=this.template({scopeFilterItems:a,canCreateScope:b}),this.$el.prepend(a),this.rendered=!0)},onFetchFail:function(){this.$el.addClass("data-load-fail");var a=b.scopeListError();this.$el.prepend(a);this.rendered=!0;this.$el.find(".scope-filter-error-message-container .aui-button").on("click",this.onRetryClick.bind(this))},
+onRetryClick:function(a){a.stopPropagation();a=this.$el.find(".scope-filter-error-message-container");a.length&&a.remove();this.rendered=!1;return this.show()}})});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:scope-filter', location = '/sidebar/scopefilter/collapsed-view.js' */
+define("jira/projects/sidebar/scopefilter/collapsed-view",["jquery","jira/projects/libs/marionette","jira/projects/sidebar/scopefilter/templates"],function(d,e,c){return e.ItemView.extend({template:c.collapsedContainer,ui:{trigger:".aui-sidebar-group-actions"},events:{"aui-sidebar-submenu-before-show @ui.trigger":"show"},initialize:function(a){this.controller=a.controller;this.rendered=!1},serializeData:function(){return{selectedScope:this.model.getSelectedScope(),selectableScopes:this.model.getSelectableScopes(),
+createActions:this.model.getCreateScopeActions()}},show:function(a,b){this.rendered||(this.$el.addClass("data-load-in-progress"),this.controller.fetchScopeFilterList().then(this.onFetchSuccess.bind(this,b)).fail(this.onFetchFail.bind(this,b)).always(function(){this.$el.addClass("data-load-finished").removeClass("data-load-in-progress")}.bind(this)))},onFetchSuccess:function(a){this.$el.addClass("data-load-success");var b=c.collapsedScopeList(this.serializeData());this.renderPreparedTemplate(a,b);
+this.rendered=!0},onFetchFail:function(a){this.$el.addClass("data-load-fail");var b=c.scopeListError();this.renderPreparedTemplate(a,b);d(a).find(".scope-filter-error-message-container .aui-button").click(this.onRetryClick.bind(this,a))},renderPreparedTemplate:function(a,b){this.ui.trigger.html(b);d(a).find(".aui-navgroup-inner").html(b)},onRetryClick:function(a){return this.show(null,a)}})});AJS.namespace("JIRA.Projects.Sidebar.ScopeFilter.CollapsedView",null,require("jira/projects/sidebar/scopefilter/collapsed-view"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:scope-filter', location = '/sidebar/scopefilter/scopeFilterController.js' */
+define("jira/projects/sidebar/scopefilter/controller","jquery wrm/data jira/api/projects wrm/context-path jira/util/logger jira/projects/libs/marionette jira/projects/sidebar/scopefilter/model jira/projects/sidebar/scopefilter/scopefilter-view jira/projects/sidebar/scopefilter/collapsed-view".split(" "),function(b,c,d,e,f,g,h,k,l){return g.Controller.extend({initialize:function(a){this.sidebarAPI=a.sidebarAPI;this.sidebar=this.sidebarAPI.getAUISidebar();this.$sidebarContentContainer=this.sidebarAPI.getContentContainer();
+this.sidebarAPI.isProjectSidebar()&&(a=a.data||c.claim("scope-filter-data"),this.scopeFilterModel=new h(a),this.dataFetched=!1,this.shouldRenderScopeFilterView=!this.scopeFilterModel.getSelectableScopes().length,this.sidebar.isCollapsed()?this.createCollapsedScopeFilterView():this.createScopeFilterView(),this.listenToSidebarEvents())},createCollapsedScopeFilterView:function(){this.scopeFilterModel.shouldDisplayWhenSidebarIsCollapsed()&&(this.collapsedView=new l({model:this.scopeFilterModel,controller:this}),
+this.collapsedView.render(),this.$sidebarContentContainer.prepend(this.collapsedView.el),f.trace("sidebar.scopefilter.collapsed"))},createScopeFilterView:function(){this.shouldRenderScopeFilterView&&(this.scopeFilterDropdownView=new k({el:"#sidebar-scope-filter-list",model:this.scopeFilterModel,controller:this}))},fetchScopeFilterList:function(){var a=b.Deferred();if(this.dataFetched||this.scopeFilterModel.getSelectableScopes().length)return a.resolve();a=e()+"/rest/projects/1.0/project/"+d.getCurrentProjectKey()+
+"/rapidviews";return b.ajax({contentType:"application/json",type:"GET",url:a}).done(function(a){this.dataFetched=!0;this.scopeFilterModel.setData(a)}.bind(this))},listenToSidebarEvents:function(){this.sidebar.on("collapse-start",function(){this.collapsedView||this.createCollapsedScopeFilterView()}.bind(this));this.sidebar.on("expand-end",function(){this.collapsedView&&(this.collapsedView.destroy(),this.collapsedView=null);this.scopeFilterDropdownView||this.createScopeFilterView()}.bind(this))}})});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:scope-filter', location = '/sidebar/scopefilter/scopeFilter-init.js' */
+define("jira/projects/sidebar/scopefilter/init",["jira/api/projects/sidebar","jira/projects/sidebar/scopefilter/controller"],function(a,b){return{init:function(c){a.getSidebar().done(function(a){new b({sidebarAPI:a,data:c})})}}});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:feature-discovery', location = '/sidebar/feature-discovery/feature-discovery.js' */
+define("jira/projects/sidebar/feature-discovery",["jira/api/projects","jira/api/projects/sidebar","wrm/context-path","underscore","jquery"],function(c,d,e,f,g){function h(b,a){f.each(a,function(a){(a=b.getItem(a))&&a.removeBadge()})}function k(b){d.getSidebar().done(function(a){h(a,b)})}return{updateBadges:function(){"undefined"!==typeof c.getCurrentProjectKey()&&g.ajax({url:e()+"/rest/projects/1.0/project/"+encodeURIComponent(c.getCurrentProjectKey())+"/badges",type:"PUT",contentType:"application/json"}).done(function(b){k(b.badgesToRemove||
+[])})}}});AJS.namespace("JIRA.Projects.Sidebar.FeatureDiscovery",null,require("jira/projects/sidebar/feature-discovery"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-last-visited', location = '/sidebar/lastvisited/last-visited-updater.js' */
+define("jira/projects/sidebar/lastvisited/updater",["jira/api/projects","jira/util/logger","wrm/context-path","jquery"],function(f,g,h,k){function d(a,c,b){a&&(b=b||function(){g.trace("last.visited.item.saved")},k.ajax({url:h()+"/rest/projects/1.0/project/"+encodeURIComponent(a)+"/lastVisited",type:"PUT",contentType:"application/json",data:JSON.stringify({id:c})}).done(b))}return{start:function(a,c){var b=f.getCurrentProjectKey(),e=a.getSelectedNavigationItem();e&&d(b,e.getId(),c);a.on("before:navigate:prevented",
+function(a){d(b,a.emitter.id,c)});a.on("before:select",function(a){a.isInitial&&d(b,a.emitter.id,c)})}}});AJS.namespace("JIRA.Projects.Sidebar.LastVisited.Updater",null,require("jira/projects/sidebar/lastvisited/updater"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/templates.soy' */
+// This file was automatically generated from templates.soy.
+// Please don't edit this file by hand.
+
+/**
+ * @fileoverview Templates in namespace JIRA.Projects.Sidebar.ProjectShortcuts.Templates.
+ */
+
+if (typeof JIRA == 'undefined') { var JIRA = {}; }
+if (typeof JIRA.Projects == 'undefined') { JIRA.Projects = {}; }
+if (typeof JIRA.Projects.Sidebar == 'undefined') { JIRA.Projects.Sidebar = {}; }
+if (typeof JIRA.Projects.Sidebar.ProjectShortcuts == 'undefined') { JIRA.Projects.Sidebar.ProjectShortcuts = {}; }
+if (typeof JIRA.Projects.Sidebar.ProjectShortcuts.Templates == 'undefined') { JIRA.Projects.Sidebar.ProjectShortcuts.Templates = {}; }
+
+
+JIRA.Projects.Sidebar.ProjectShortcuts.Templates.content = function(opt_data, opt_ignored) {
+  var output = '';
+  if (opt_data.canManage || opt_data.numberOfShortcuts > 0) {
+    output += '<div id="project-shortcuts-list-align-container" class="aui-sidebar-group jira-sidebar-group-with-divider project-shortcuts-group' + ((opt_data.numberOfShortcuts == 0) ? ' project-shortcuts-group_empty' : '') + '" tabindex="0" data-id="project-shortcuts-group"><span class="aui-icon aui-icon-small aui-iconfont-link">' + soy.$$escapeHtml('\u0421\u0441\u044b\u043b\u043a\u0438 \u043f\u0440\u043e\u0435\u043a\u0442\u0430') + '</span><div class="aui-nav-heading">' + soy.$$escapeHtml('\u0421\u0441\u044b\u043b\u043a\u0438 \u043f\u0440\u043e\u0435\u043a\u0442\u0430') + '</div>' + ((opt_data.canManage) ? '<p class="project-shortcuts-group__description' + ((opt_data.numberOfShortcuts > 0) ? ' hidden' : '') + '">' + soy.$$escapeHtml('\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443 \u043d\u0430 \u043f\u043e\u043b\u0435\u0437\u043d\u0443\u044e \u0438\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044e, \u043a\u043e\u0442\u043e\u0440\u0430\u044f \u0431\u0443\u0434\u0435\u0442 \u0432\u0438\u0434\u043d\u0430 \u0432\u0441\u0435\u0439 \u0432\u0430\u0448\u0435\u0439 \u043a\u043e\u043c\u0430\u043d\u0434\u0435.') + '</p>' : '') + '<ul class="aui-nav project-shortcuts-list">';
+    if (opt_data.shortcuts) {
+      var shortcutList26 = opt_data.shortcuts;
+      var shortcutListLen26 = shortcutList26.length;
+      for (var shortcutIndex26 = 0; shortcutIndex26 < shortcutListLen26; shortcutIndex26++) {
+        var shortcutData26 = shortcutList26[shortcutIndex26];
+        output += JIRA.Projects.Sidebar.ProjectShortcuts.Templates.shortcut({id: shortcutData26.id, name: shortcutData26.name, url: shortcutData26.url, icon: shortcutData26.icon, sequence: shortcutData26.sequence, canManage: opt_data.canManage, iconsMap: opt_data.iconsMap, isWithIcon: opt_data.isWithIcons, orderingEnabled: opt_data.orderingEnabled});
+      }
+    }
+    output += ((opt_data.canManage) ? '<li><a class="aui-nav-item project-shortcuts-group__add" href="#" data-link-id="project-shortcut-add"><span class="aui-icon aui-icon-large aui-iconfont-add-small" aria-hidden="true"></span><span class="aui-nav-item-label">' + soy.$$escapeHtml('\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u044f\u0440\u043b\u044b\u043a') + '</span></a></li>' : '') + '</ul></div>';
+  }
+  return output;
+};
+if (goog.DEBUG) {
+  JIRA.Projects.Sidebar.ProjectShortcuts.Templates.content.soyTemplateName = 'JIRA.Projects.Sidebar.ProjectShortcuts.Templates.content';
+}
+
+
+JIRA.Projects.Sidebar.ProjectShortcuts.Templates.shortcut = function(opt_data, opt_ignored) {
+  return '<li class="project-shortcut"><a class="aui-nav-item project-shortcuts-group__link" href="' + soy.$$escapeHtml(opt_data.url) + '" title="' + soy.$$escapeHtml(opt_data.name) + '" target="_blank" rel="nofollow noopener noreferrer" data-shortcut-id="' + soy.$$escapeHtml(opt_data.id) + '" data-link-id="project-shortcut-' + soy.$$escapeHtml(opt_data.id) + '">' + ((opt_data.isWithIcon) ? '<span class="aui-icon aui-icon-large ' + JIRA.Projects.Sidebar.ProjectShortcuts.Templates.icon({iconId: opt_data.icon, iconsMap: opt_data.iconsMap}) + '" data-project-shortcuts-icon-id="' + soy.$$escapeHtml(opt_data.icon) + '">' + soy.$$escapeHtml('\u0417\u043d\u0430\u0447\u043e\u043a \u0431\u044b\u0441\u0442\u0440\u043e\u0439 \u0441\u0441\u044b\u043b\u043a\u0438 \u043f\u0440\u043e\u0435\u043a\u0442\u0430') + '</span>' : '') + '<span class="aui-nav-item-label">' + soy.$$escapeHtml(opt_data.name) + '</span></a>' + ((opt_data.canManage) ? '<button class="aui-button aui-button-subtle aui-dropdown2-trigger aui-dropdown2-trigger-arrowless project-shortcuts-group__actions" aria-owns="project-shortcuts-dropdown_' + soy.$$escapeHtml(opt_data.id) + '" aria-controls="project-shortcuts-dropdown_' + soy.$$escapeHtml(opt_data.id) + '" aria-haspopup="true" data-aui-alignment-container="#project-shortcuts-list-align-container"><span class="aui-icon aui-icon-small aui-iconfont-more">' + soy.$$escapeHtml('\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f \u0441 \u0444\u0438\u043b\u044c\u0442\u0440\u043e\u043c') + '</span></button><div id="project-shortcuts-dropdown_' + soy.$$escapeHtml(opt_data.id) + '" class="aui-dropdown2 aui-style-default project-shortcuts-group__dropdown"><ul class="aui-list-truncate"><li><a role="menuitem" class="project-shortcuts-group__actions__edit" href="#">' + soy.$$escapeHtml('\u0420\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c') + '</a></li>' + ((opt_data.orderingEnabled) ? '<li><a role="menuitem" class="project-shortcuts-group__actions__move-up" href="#">' + soy.$$escapeHtml('\u041f\u0435\u0440\u0435\u043c\u0435\u0441\u0442\u0438\u0442\u044c \u0432\u0432\u0435\u0440\u0445') + '</a></li><li><a role="menuitem" class="project-shortcuts-group__actions__move-down" href="#">' + soy.$$escapeHtml('\u041f\u0435\u0440\u0435\u043c\u0435\u0441\u0442\u0438\u0442\u044c \u0432\u043d\u0438\u0437') + '</a></li>' : '') + '<li><a role="menuitem" class="project-shortcuts-group__actions__delete  " href="#">' + soy.$$escapeHtml('\u0423\u0434\u0430\u043b\u0438\u0442\u044c') + '</a></li></ul></div>' : '') + '</li>';
+};
+if (goog.DEBUG) {
+  JIRA.Projects.Sidebar.ProjectShortcuts.Templates.shortcut.soyTemplateName = 'JIRA.Projects.Sidebar.ProjectShortcuts.Templates.shortcut';
+}
+
+
+JIRA.Projects.Sidebar.ProjectShortcuts.Templates.icon = function(opt_data, opt_ignored) {
+  opt_data = opt_data || {};
+  var output = '';
+  if (opt_data.iconsMap) {
+    var id__soy95 = opt_data.iconId && opt_data.iconsMap[opt_data.iconId] ? opt_data.iconId : '1';
+    output += (opt_data.iconsMap[id__soy95]) ? soy.$$escapeHtml(opt_data.iconsMap[id__soy95].className) : '';
+  }
+  return output;
+};
+if (goog.DEBUG) {
+  JIRA.Projects.Sidebar.ProjectShortcuts.Templates.icon.soyTemplateName = 'JIRA.Projects.Sidebar.ProjectShortcuts.Templates.icon';
+}
+
+
+JIRA.Projects.Sidebar.ProjectShortcuts.Templates.shortcutFormFields = function(opt_data, opt_ignored) {
+  return '<div class="project-shortcuts-field-group">' + aui.form.textField({name: 'project-shortcuts-url-' + opt_data.action, isRequired: true, id: 'project-shortcuts-url-' + opt_data.action, labelContent: 'URL \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u044b', placeholderText: '\u043d\u0430\u043f\u0440\u0438\u043c\u0435\u0440, https://www.atlassian.com', extraClasses: 'project-shortcuts-url', value: opt_data.url ? opt_data.url : '', errorTexts: opt_data.errors.urlError ? [opt_data.errors.urlError] : []}) + '<div class="field-group project-shortcuts-name">' + aui.form.label({isRequired: true, forField: 'project-shortcuts-name-' + opt_data.action, content: '\u041c\u0435\u0442\u043a\u0430'}) + '<div class="project-shortcuts-name-icon-block"><div class="project-shortcuts-icon-picker-block"></div>' + aui.form.input({name: 'project-shortcuts-name-' + opt_data.action, id: 'project-shortcuts-name-' + opt_data.action, placeholderText: '\u043d\u0430\u043f\u0440\u0438\u043c\u0435\u0440 \u0441\u0430\u0439\u0442 Atlassian', extraClasses: 'project-shortcuts-name-input' + (opt_data.isWithIcon ? ' project-shortcuts-name-input-with-icon' : ''), value: opt_data.name ? opt_data.name : '', type: 'text'}) + '</div>' + ((opt_data.errors.iconError) ? aui.form.fieldError({message: opt_data.errors.iconError}) : '') + ((opt_data.errors.nameError) ? aui.form.fieldError({message: opt_data.errors.nameError}) : '') + '</div></div>';
+};
+if (goog.DEBUG) {
+  JIRA.Projects.Sidebar.ProjectShortcuts.Templates.shortcutFormFields.soyTemplateName = 'JIRA.Projects.Sidebar.ProjectShortcuts.Templates.shortcutFormFields';
+}
+
+
+JIRA.Projects.Sidebar.ProjectShortcuts.Templates.iconsPicker = function(opt_data, opt_ignored) {
+  return '<span>' + JIRA.Projects.Sidebar.ProjectShortcuts.Templates.iconsList(opt_data) + '</span>' + aui.dropdown2.trigger({menu: {id: 'project-shortcuts-icons-list-' + opt_data.cid}, extraClasses: 'aui-button project-shortcuts-icons-picker', iconClasses: 'aui-icon aui-icon-large  ' + soy.$$escapeHtml(opt_data.icon.className), extraAttributes: {href: '#'}});
+};
+if (goog.DEBUG) {
+  JIRA.Projects.Sidebar.ProjectShortcuts.Templates.iconsPicker.soyTemplateName = 'JIRA.Projects.Sidebar.ProjectShortcuts.Templates.iconsPicker';
+}
+
+
+JIRA.Projects.Sidebar.ProjectShortcuts.Templates.iconsList = function(opt_data, opt_ignored) {
+  var output = '<div id="project-shortcuts-icons-list-' + soy.$$escapeHtml(opt_data.cid) + '" hidden class="aui-style-default aui-dropdown2 project-shortcuts-icons-list aui-dropdown2-section"><ul>';
+  var iconList150 = opt_data.iconsList;
+  var iconListLen150 = iconList150.length;
+  for (var iconIndex150 = 0; iconIndex150 < iconListLen150; iconIndex150++) {
+    var iconData150 = iconList150[iconIndex150];
+    output += '<li><a class="project-shortcuts-icons-icon" data-project-shortcuts-icons-id="' + soy.$$escapeHtml(iconData150.name) + '"><span class="aui-icon aui-icon-large ' + soy.$$escapeHtml(iconData150.className) + '">' + soy.$$escapeHtml('\u0417\u043d\u0430\u0447\u043e\u043a \u0431\u044b\u0441\u0442\u0440\u043e\u0439 \u0441\u0441\u044b\u043b\u043a\u0438 \u043f\u0440\u043e\u0435\u043a\u0442\u0430') + '</span></a></li>';
+  }
+  output += '</ul></div>';
+  return output;
+};
+if (goog.DEBUG) {
+  JIRA.Projects.Sidebar.ProjectShortcuts.Templates.iconsList.soyTemplateName = 'JIRA.Projects.Sidebar.ProjectShortcuts.Templates.iconsList';
+}
+
+
+JIRA.Projects.Sidebar.ProjectShortcuts.Templates.addDialog = function(opt_data, opt_ignored) {
+  return '<form action="" method="post" class="aui"><h2>' + soy.$$escapeHtml('\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u044f\u0440\u043b\u044b\u043a') + '</h2><fieldset>' + JIRA.Projects.Sidebar.ProjectShortcuts.Templates.shortcutFormFields(soy.$$augmentMap(opt_data, {action: 'add'})) + '<div class="buttons-container"><div class="buttons"><button class="aui-button project-shortcuts-submit aui-button-primary">' + soy.$$escapeHtml('\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c') + '</button><button class="aui-button aui-button-link project-shortcuts-cancel">' + soy.$$escapeHtml('\u041e\u0442\u043c\u0435\u043d\u0438\u0442\u044c') + '</button></div></div></fieldset></form>';
+};
+if (goog.DEBUG) {
+  JIRA.Projects.Sidebar.ProjectShortcuts.Templates.addDialog.soyTemplateName = 'JIRA.Projects.Sidebar.ProjectShortcuts.Templates.addDialog';
+}
+
+
+JIRA.Projects.Sidebar.ProjectShortcuts.Templates.editDialogChrome = function(opt_data, opt_ignored) {
+  return '<section role="dialog" id="edit-project-shortcut-dialog" class="aui-layer aui-dialog2 aui-dialog2-small" hidden data-aui-remove-on-hide="true"><header class="aui-dialog2-header"><h2 class="aui-dialog2-header-main">' + soy.$$escapeHtml('\u0420\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u044f\u0440\u043b\u044b\u043a') + '</h2></header></section>';
+};
+if (goog.DEBUG) {
+  JIRA.Projects.Sidebar.ProjectShortcuts.Templates.editDialogChrome.soyTemplateName = 'JIRA.Projects.Sidebar.ProjectShortcuts.Templates.editDialogChrome';
+}
+
+
+JIRA.Projects.Sidebar.ProjectShortcuts.Templates.editDialog = function(opt_data, opt_ignored) {
+  return '<div class="aui-dialog2-content"><form class="aui" method="post">' + JIRA.Projects.Sidebar.ProjectShortcuts.Templates.shortcutFormFields(soy.$$augmentMap(opt_data, {action: 'edit'})) + '<button type="submit" class="project-shortcuts-hidden-submit"></button></form></div><footer class="aui-dialog2-footer"><div class="aui-dialog2-footer-actions"><button class="aui-button aui-button-primary project-shortcuts-submit">' + soy.$$escapeHtml('\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c') + '</button><button class="aui-button aui-button-link project-shortcuts-cancel">' + soy.$$escapeHtml('\u041e\u0442\u043c\u0435\u043d\u0438\u0442\u044c') + '</button></div></footer>';
+};
+if (goog.DEBUG) {
+  JIRA.Projects.Sidebar.ProjectShortcuts.Templates.editDialog.soyTemplateName = 'JIRA.Projects.Sidebar.ProjectShortcuts.Templates.editDialog';
+}
+
+
+JIRA.Projects.Sidebar.ProjectShortcuts.Templates.deleteDialog = function(opt_data, opt_ignored) {
+  return '<section role="dialog" id="delete-project-shortcut-dialog" class="aui-layer aui-dialog2 aui-dialog2-small" hidden data-aui-remove-on-hide="true"><header class="aui-dialog2-header"><h2 class="aui-dialog2-header-main">' + soy.$$escapeHtml('\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u044d\u0442\u0443 \u0431\u044b\u0441\u0442\u0440\u0443\u044e \u0441\u0441\u044b\u043b\u043a\u0443?') + '</h2></header><div class="aui-dialog2-content"><p>' + soy.$$escapeHtml('\u0421\u0441\u044b\u043b\u043a\u0430 \u0431\u043e\u043b\u044c\u0448\u0435 \u043d\u0435 \u0431\u0443\u0434\u0435\u0442 \u043e\u0442\u043e\u0431\u0440\u0430\u0436\u0430\u0442\u044c\u0441\u044f \u043d\u0430 \u0431\u043e\u043a\u043e\u0432\u043e\u0439 \u043f\u0430\u043d\u0435\u043b\u0438 \u043f\u0440\u043e\u0435\u043a\u0442\u0430. \u041f\u043e\u0437\u0436\u0435 \u0432\u044b \u0441\u043d\u043e\u0432\u0430 \u0441\u043c\u043e\u0436\u0435\u0442\u0435 \u0434\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u044d\u0442\u0443 \u0441\u0441\u044b\u043b\u043a\u0443.') + '</p></div><footer class="aui-dialog2-footer"><div class="aui-dialog2-footer-actions"><button class="aui-button aui-button-primary project-shortcuts-submit">' + soy.$$escapeHtml('\u0423\u0434\u0430\u043b\u0438\u0442\u044c') + '</button><button class="aui-button aui-button-link project-shortcuts-cancel">' + soy.$$escapeHtml('\u041e\u0442\u043c\u0435\u043d\u0438\u0442\u044c') + '</button></div></footer></section>';
+};
+if (goog.DEBUG) {
+  JIRA.Projects.Sidebar.ProjectShortcuts.Templates.deleteDialog.soyTemplateName = 'JIRA.Projects.Sidebar.ProjectShortcuts.Templates.deleteDialog';
+}
+
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/templates.js' */
+define("jira/projects/sidebar/project-shortcuts/templates",function(){return JIRA.Projects.Sidebar.ProjectShortcuts.Templates});AJS.namespace("JIRA.Projects.Sidebar.ProjectShortcuts.Templates",null,require("jira/projects/sidebar/project-shortcuts/templates"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/project-shortcuts-analytics.js' */
+define("jira/projects/sidebar/project-shortcuts/analytics",["jira/ajs/dark-features","jira/analytics","jquery"],function(h,d,g){var e=h.isEnabled("com.atlassian.jira.projects.ProjectCentricNavigation.ProjectShortcutIcons");return{initialize:function(a){this.projectId=a},initShortcutClick:function(a,b){var k=b.getAUISidebar(),c=g(a),f=this;c.on("click","a.project-shortcuts-group__link",function(a){a=c.find("a.project-shortcuts-group__link");var b=g(this);d.send({name:"jira.projects.shortcut.clicked",
+data:{shortcutId:b.data("shortcutId"),shortcutPosition:b.closest("li").index()+1,shortcutIconName:e?b.find(".aui-icon").data("projectShortcutsIconId"):"",shortcutCount:a.size(),isWithIcons:e,isSidebarCollapsed:k.isCollapsed(),projectId:f.projectId}})})},initDialogActions:function(a){var b=this;a.on("childview:edit:open",function(a,c){a=c.collection.indexOf(c)+1;d.send({name:"jira.projects.shortcut.edit.dialog.opened",data:{isWithIcons:e,shortcutId:c.get("id"),shortcutPosition:a,shortcutCount:c.collection.size(),
+projectId:b.projectId}})});a.on("childview:edit:close",function(a,c,f){a=c.collection.indexOf(c)+1;d.send({name:"jira.projects.shortcut.edit.dialog.closed",data:{isWithIcons:e,isSave:f,shortcutId:c.get("id"),shortcutPosition:a,shortcutCount:c.collection.size(),projectId:b.projectId}})});a.on("add:open",function(){d.send({name:"jira.projects.shortcut.add.dialog.opened",data:{isWithIcons:e,projectId:b.projectId}})});a.on("add:close",function(a){d.send({name:"jira.projects.shortcut.add.dialog.closed",
+data:{isWithIcons:e,isSave:a,projectId:b.projectId}})})},iconChanged:function(a,b,e){d.send({name:"jira.projects.shortcut.icon.changed",data:{iconName:b,oldIconName:e,shortcutId:a.isNew()?"":a.get("id"),isNew:a.isNew(),cid:a.cid,projectId:this.projectId}})},iconChangeConfirmed:function(a,b){d.send({name:"jira.projects.shortcut.icon.confirmed",data:{oldIconName:a.get("icon"),iconName:b,shortcutId:a.isNew()?"":a.get("id"),isNew:a.isNew(),cid:a.cid,projectId:this.projectId}})},iconPickerOpened:function(a){d.send({name:"jira.projects.shortcut.icon.picker.opened",
+data:{shortcutId:a.isNew()?"":a.get("id"),isNew:a.isNew(),cid:a.cid,projectId:this.projectId}})},iconPickerClosed:function(a,b){d.send({name:"jira.projects.shortcut.icon.picker.closed",data:{shortcutId:a.isNew()?"":a.get("id"),isNew:a.isNew(),cid:a.cid,isSave:b,projectId:this.projectId}})}}});AJS.namespace("JIRA.Projects.Sidebar.ProjectShortcuts.Analytics",null,require("jira/projects/sidebar/project-shortcuts/analytics"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/services/AvailableIcons.js' */
+define("jira/projects/sidebar/project-shortcuts/services/available-icons",["underscore"],function(d){var b=[],c={},e=!1;return{initialize:function(a){b=a||b;c={};d.each(a,function(a){c[a.name]=a})},getIconsList:function(){return b},getIconsMap:function(){return c},getAllIconsClasses:function(){return d.reduce(b,function(a,b){return a+b.className+" "},"")},getIconFromName:function(a){return this.getIconsMap()[a]?this.getIconsMap()[a]:this.getIconsList()[0]?this.getIconsList()[0]:{}},setWithIcons:function(a){e=
+a},isWithIcons:function(){return e}}});AJS.namespace("JIRA.Projects.Sidebar.ProjectShortcuts.Services.AvailableIcons",null,require("jira/projects/sidebar/project-shortcuts/services/available-icons"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/entities/Shortcut.js' */
+define("jira/projects/sidebar/project-shortcuts/entities/shortcut",["jira/util/formatter","jira/util/logger","jira-projects-backbone","wrm/context-path","underscore"],function(h,e,f,k,l){function g(b){try{var a=JSON.parse(b.responseText)}catch(c){a={message:"\u041d\u0430\u043c \u043d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044c \u044d\u0442\u043e \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435. \u041f\u043e\u0445\u043e\u0436\u0435, \u043f\u0440\u043e\u0438\u0437\u043e\u0448\u043b\u0430 \u043e\u0448\u0438\u0431\u043a\u0430 \u0441\u0432\u044f\u0437\u0438."}}return a}return f.Model.extend({defaults:{url:"",name:"",icon:"",sequence:null},initialize:function(b,a){if(!a||!a.projectKey)throw"Project key is required";this.projectKey=a.projectKey},
+urlRoot:function(){return k()+"/rest/projects/1.0/project/"+encodeURIComponent(this.projectKey)+"/shortcut"},clear:function(){this.unset("id");this.set("url",this.defaults.url);this.set("name",this.defaults.name);this.set("icon",this.defaults.icon);this.set("sequence",this.defaults.sequence)},save:function(b){if(!0!==this.saving){this.saving=!0;var a=this;a.trigger("save:start");var c=this.isNew()?"create":"update",d=a.toJSON();b&&(d=l.omit(d,"sequence"));return this.sync(c,a,{attrs:d}).always(function(){a.saving=
+!1;a.trigger("save:finish")}).done(function(b){a.set(b,{silent:!0});e.trace("jira.projects.shortcuts."+c+".success");a.trigger("save:success")}).fail(function(b){b=g(b);e.trace("jira.projects.shortcuts."+c+".fail");a.trigger("save:failure",b)})}},destroy:function(){if(!0!==this.saving){this.saving=!0;var b=this;b.trigger("remove:start");var a=f.Model.prototype.destroy.apply(this,arguments);a.always(function(){b.saving=!1;b.trigger("remove:finish")}).done(function(){b.trigger("remove:success")}).fail(function(a){a=
+g(a);b.trigger("remove:failure",a)});return a}}})});AJS.namespace("JIRA.Projects.Sidebar.ProjectShortcuts.Entities.Shortcut",null,require("jira/projects/sidebar/project-shortcuts/entities/shortcut"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/entities/ShortcutErrors.js' */
+define("jira/projects/sidebar/project-shortcuts/entities/shortcut-errors",["jira-projects-backbone"],function(b){return b.Model.extend({defaults:{urlError:"",nameError:"",iconError:"",generalError:""},initialize:function(c,b){c=b.model;this.listenTo(c,"save:failure remove:failure",function(a){this.set({urlError:a.errors&&a.errors.url,nameError:a.errors&&a.errors.name,iconError:a.errors&&a.errors.icon,generalError:a.message||a.errorMessages&&0<a.errorMessages.length?a.message||a.errorMessages[0]:void 0})});
+this.listenTo(c,"save:success remove:success",this.clear)}})});AJS.namespace("JIRA.Projects.Sidebar.ProjectShortcuts.Entities.ShortcutErrors",null,require("jira/projects/sidebar/project-shortcuts/entities/shortcut-errors"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/entities/Shortcuts.js' */
+define("jira/projects/sidebar/project-shortcuts/entities/shortcuts",["jira/projects/sidebar/project-shortcuts/entities/shortcut","jira-projects-backbone","wrm/context-path"],function(c,d,e){return d.Collection.extend({model:function(b,a){a=Object.assign({},a,{projectKey:a.collection.projectKey});return new c(b,a)},url:function(){return e()+"/rest/projects/1.0/project/"+encodeURIComponent(this.projectKey)+"/shortcut"},initialize:function(b,a){this.projectKey=a.projectKey}})});
+AJS.namespace("JIRA.Projects.Sidebar.ProjectShortcuts.Entities.Shortcuts",null,require("jira/projects/sidebar/project-shortcuts/entities/shortcuts"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/views/IconPickerContent.js' */
+define("jira/projects/sidebar/project-shortcuts/views/icon-picker-content",["jira/projects/sidebar/project-shortcuts/templates","jira/projects/sidebar/project-shortcuts/analytics","jira/projects/sidebar/project-shortcuts/services/available-icons","jira/projects/libs/marionette","jquery"],function(f,g,h,k,e){return k.ItemView.extend({template:f.iconsPicker,ui:{icon:".project-shortcuts-icons-icon",iconList:".project-shortcuts-icons-list",iconPicker:".project-shortcuts-icons-picker"},modelEvents:{"change:icon":function(){var a=
+this._modelIcon(),b=this.ui.iconPicker.children();b.removeClass(this.iconFactory.getAllIconsClasses());b.addClass(a.className);this.ui.iconPicker.data("projectShortcutsIconsId",a.name)},"save:start":function(){this.ui.iconPicker.attr("aria-disabled",!0)},"save:finish":function(){this.ui.iconPicker.attr("aria-disabled",!1)}},events:{"keydown @ui.iconPicker":function(a){if(this.isPickerActive())switch(a.keyCode){case AJS.keyCode.LEFT:case AJS.keyCode.RIGHT:case AJS.keyCode.DOWN:case AJS.keyCode.UP:var b=
+this.ui.iconList.find(".active"),d=this.ui.iconList.find("li").size();switch(a.keyCode){case AJS.keyCode.LEFT:var c=-1;break;case AJS.keyCode.RIGHT:c=1;break;case AJS.keyCode.DOWN:c=5;break;case AJS.keyCode.UP:c=-5;break;default:c=0}c=b.closest("li").index()+c;if(0>c||c>=d)c=(c+d)%d;b.removeClass("active aui-dropdown2-active");this.ui.icon.eq(c).addClass("active aui-dropdown2-active");a.stopPropagation();a.preventDefault();this.ui.iconList.trigger("aui-dropdown2-item-selected");break;case AJS.keyCode.ESCAPE:this.hideIconPicker(),
+a.stopPropagation(),a.preventDefault()}}},initialize:function(a){this.iconFactory=h;this.analytics=g},onRender:function(){var a=this;this.ui.icon.on("click",function(){var b=e(this).data("projectShortcutsIconsId");a.analytics.iconChangeConfirmed(a.model,b);a.analyticsOldIconId="";a.analyticsIconClicked=!0;a.model.set("icon",b);a.ui.iconPicker.focus()});this.ui.iconList.on("aui-dropdown2-show",function(){a.ui.iconPicker.focus();a.analyticsIconClicked=!1;a.analytics.iconPickerOpened(a.model)});this.ui.iconList.on("aui-dropdown2-hide",
+function(){a.analytics.iconPickerClosed(a.model,a.analyticsIconClicked)});this.analyticsOldIconId="";this.ui.iconList.on("aui-dropdown2-item-selected",function(b){b=e(this).find(".active").data("projectShortcutsIconsId");a.analyticsOldIconId&&a.analyticsOldIconId!==b&&a.analytics.iconChanged(a.model,b,a.analyticsOldIconId);a.analyticsOldIconId=b});this.ui.iconPicker.data("projectShortcutsIconsId",this.model.get("icon"))},hideIconPicker:function(){this.isPickerActive()&&this.ui.iconPicker.trigger("aui-button-invoke")},
+isPickerActive:function(){return this.ui.iconPicker.hasClass("active")},_modelIcon:function(){return this.iconFactory.getIconFromName(this.model.get("icon"))},onFormSubmit:function(){this.model.set("icon",this.ui.iconPicker.data("projectShortcutsIconsId")||"")},focus:function(){this.ui.iconPicker.focus()},serializeData:function(){return{iconsList:this.iconFactory.getIconsList(),icon:this._modelIcon(),cid:this.cid}}})});
+AJS.namespace("JIRA.Projects.Sidebar.ProjectShortcuts.Views.IconPickerContent",null,require("jira/projects/sidebar/project-shortcuts/views/icon-picker-content"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/views/DialogContent.js' */
+define("jira/projects/sidebar/project-shortcuts/views/dialog-content","jira/util/formatter jira/flag jira/projects/sidebar/project-shortcuts/views/icon-picker-content jira/projects/sidebar/project-shortcuts/services/available-icons jira/projects/libs/marionette underscore".split(" "),function(d,e,f,g,h,k){function c(a){a.preventDefault();this.ensureProtocolPrefix();this.tryToAutomagicallyDeriveNameFromUrl();if(this.iconPickerContent)this.iconPickerContent.onFormSubmit();this.model.set("url",this.ui.url.val());
+this.model.set("name",this.ui.name.val());this.model.save(!0)}var b=h.LayoutView.extend({ui:{form:"form",inputs:"input, button",submit:".project-shortcuts-submit",cancel:".project-shortcuts-cancel",url:".project-shortcuts-url input",name:".project-shortcuts-name input"},regions:{iconPicker:".project-shortcuts-icon-picker-block"},events:{"click @ui.cancel":function(a){a.preventDefault();this.model.clear();this.setNameAutomagically=!0;this.errorModel.clear();this.trigger("cancel")},"click @ui.submit":c,
+"submit @ui.form":c,"blur @ui.url":function(){this.ensureProtocolPrefix();this.tryToAutomagicallyDeriveNameFromUrl()},"input @ui.url":function(){this.model.set("url",this.ui.url.val());this.tryToAutomagicallyDeriveNameFromUrl()},"input @ui.name":function(){this.setNameAutomagically=!1;this.model.set("name",this.ui.name.val())},"keydown @ui.name":function(a){this.iconPickerContent&&a.shiftKey&&a.keyCode===AJS.keyCode.TAB&&(a.preventDefault(),this.iconPickerContent.focus())},"keydown @ui.url":function(a){this.iconPickerContent&&
+!a.shiftKey&&a.keyCode===AJS.keyCode.TAB&&(a.preventDefault(),this.iconPickerContent.focus())}},modelEvents:{"save:start":function(){this.ui.inputs.prop("disabled",!0);this.ui.submit.addClass("loading");this.ui.submit[0].busy()},"save:finish":function(){this.ui.inputs.prop("disabled",!1);this.ui.submit.removeClass("loading");this.ui.submit[0].idle()},"save:failure":function(){this.render();this.errorModel.get("generalError")&&e({type:"error",title:"\u041d\u0435 \u0443\u0434\u0430\u0435\u0442\u0441\u044f \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0431\u044b\u0441\u0442\u0440\u0443\u044e \u0441\u0441\u044b\u043b\u043a\u0443. \u0415\u0441\u043b\u0438 \u043f\u0440\u043e\u0431\u043b\u0435\u043c\u0430 \u0432\u043e\u0437\u043d\u0438\u043a\u043d\u0435\u0442 \u0441\u043d\u043e\u0432\u0430, \u043e\u0431\u0440\u0430\u0442\u0438\u0442\u0435\u0441\u044c \u043a \u0441\u0438\u0441\u0442\u0435\u043c\u043d\u043e\u043c\u0443 \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u0443.",
+close:"auto",body:this.errorModel.get("generalError")});this.errorModel.get("nameError")&&this.ui.name.focus();this.errorModel.get("urlError")&&this.ui.url.focus();return this},"save:success":function(){this.setNameAutomagically=!0}},initialize:function(a){this.errorModel=a.errorModel;this.setNameAutomagically=0===this.model.get("name").length;this.iconFactory=g},serializeData:function(){return k.extend(this.model.toJSON(),{errors:this.errorModel.toJSON(),action:this.action,isWithIcon:this.iconFactory.isWithIcons()})},
+onRender:function(){this.iconFactory.isWithIcons()?(this.iconPickerContent=new f({model:this.model,action:this.action,observable:this}),this.getRegion("iconPicker").show(this.iconPickerContent)):delete this.iconPickerContent},hideIconPicker:function(){this.iconPickerContent&&this.iconPickerContent.hideIconPicker()},setName:function(a){this.ui.name.val(a);this.model.set("name",a)},setUrl:function(a){this.ui.url.val(a);this.model.set("url",a)},ensureProtocolPrefix:function(){var a=this.ui.url.val().trim();
+0<a.length&&!b.urlPattern.test(a)&&this.setUrl("http://"+a)},tryToAutomagicallyDeriveNameFromUrl:function(){var a=this.ui.url.val().trim();this.setNameAutomagically&&(b.urlOptionalProtocolPattern.test(a)?(a=b.urlOptionalProtocolPattern.exec(a),this.setName(a[3])):this.setName(a))}},{urlPattern:/^[a-zA-Z0-9]+:(\/\/)?([^\/]*).*/,urlOptionalProtocolPattern:/^([a-zA-Z0-9]+:(\/\/)?)?([^\/]*).*/});return b});AJS.namespace("JIRA.Projects.Sidebar.ProjectShortcuts.Views.DialogContent",null,require("jira/projects/sidebar/project-shortcuts/views/dialog-content"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/views/AddDialogContent.js' */
+define("jira/projects/sidebar/project-shortcuts/views/add-dialog-content",["jira/projects/sidebar/project-shortcuts/templates","jira/projects/sidebar/project-shortcuts/views/dialog-content"],function(a,b){return b.extend({template:a.addDialog})});AJS.namespace("JIRA.Projects.Sidebar.ProjectShortcuts.Views.AddDialogContent",null,require("jira/projects/sidebar/project-shortcuts/views/add-dialog-content"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/views/EditDialogContent.js' */
+define("jira/projects/sidebar/project-shortcuts/views/edit-dialog-content",["jira/projects/sidebar/project-shortcuts/templates","jira/projects/sidebar/project-shortcuts/views/dialog-content"],function(a,b){return b.extend({template:a.editDialog})});AJS.namespace("JIRA.Projects.Sidebar.ProjectShortcuts.Views.EditDialogContent",null,require("jira/projects/sidebar/project-shortcuts/views/edit-dialog-content"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/dialogs/Delete.js' */
+define("jira/projects/sidebar/project-shortcuts/dialogs/delete","jira/projects/sidebar/project-shortcuts/templates jira/util/formatter jira/util/logger jira/flag jira/projects/libs/marionette underscore".split(" "),function(b,c,d,e,f,g){return f.ItemView.extend({template:b.deleteDialog,ui:{inputs:"input, button",submit:".project-shortcuts-submit",cancel:".project-shortcuts-cancel"},events:{"click @ui.cancel":function(a){a.preventDefault();this.dialog.hide()},"click @ui.submit":function(a){a.preventDefault();
+this.model.destroy({wait:!0})}},modelEvents:{"remove:start":function(){this.ui.inputs.prop("disabled",!0);this.ui.submit.addClass("loading");this.ui.submit[0].busy()},"remove:finish":function(){this.ui.inputs.prop("disabled",!1);this.ui.submit.removeClass("loading");this.ui.submit[0].idle();this.dialog.hide();d.trace("jira.projects.shortcuts.deleted")},"remove:failure":function(a){(a.message||a.errorMessages&&0<a.errorMessages.length)&&e({type:"error",title:"\u041d\u0435 \u0443\u0434\u0430\u0435\u0442\u0441\u044f \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u0431\u044b\u0441\u0442\u0440\u0443\u044e \u0441\u0441\u044b\u043b\u043a\u0443. \u0415\u0441\u043b\u0438 \u043f\u0440\u043e\u0431\u043b\u0435\u043c\u0430 \u0432\u043e\u0437\u043d\u0438\u043a\u043d\u0435\u0442 \u0441\u043d\u043e\u0432\u0430, \u043e\u0431\u0440\u0430\u0442\u0438\u0442\u0435\u0441\u044c \u043a \u0441\u0438\u0441\u0442\u0435\u043c\u043d\u043e\u043c\u0443 \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u0443.",
+close:"auto",body:a.message||a.errorMessages[0]})}},initialize:function(){this.render();this.$el.appendTo("body");this.dialog=AJS.dialog2(this.$el);this.dialog.show();var a=this;this.dialog.on("hide",function(){g.defer(function(){a.destroy()})})},onRender:function(){this.unwrapTemplate()}})});AJS.namespace("JIRA.Projects.Sidebar.ProjectShortcuts.Dialogs.Delete",null,require("jira/projects/sidebar/project-shortcuts/dialogs/delete"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/dialogs/Edit.js' */
+define("jira/projects/sidebar/project-shortcuts/dialogs/edit","jira/projects/sidebar/project-shortcuts/templates jira/projects/sidebar/project-shortcuts/views/edit-dialog-content jira/projects/sidebar/project-shortcuts/entities/shortcut jira/projects/sidebar/project-shortcuts/entities/shortcut-errors jira/projects/libs/marionette underscore jquery".split(" "),function(e,f,g,h,k,l,c){return k.Controller.extend({initialize:function(a){var b=this;l.bindAll(this,"hide");this.model=new g(a.model.toJSON(),
+{projectKey:a.model.projectKey||a.model.collection.projectKey});this.errorModel=new h(void 0,{model:this.model});this.view=new f({model:this.model,errorModel:this.errorModel});this.analyticsSave=!1;this.view.render();var d=c(e.editDialogChrome({}));this.view.$el.appendTo(d);this.dialog=AJS.dialog2(d);this.dialog.show();this.view.ui.url.focus();this._onResizeWindow=function(){b.hideIconPicker()};c(window).on("resize",this._onResizeWindow);this.listenTo(this.view,"cancel",this.hide);this.listenTo(this.model,
+"save:success",function(){this.analyticsSave=!0;this.hide();a.model.set(b.model.toJSON())});this.dialog.on("hide",function(){b.trigger("dialog:close",b.analyticsSave)})},hideIconPicker:function(){this.view.hideIconPicker()},hide:function(){this.dialog.hide();c(window).off("resize",this._onResizeWindow)}})});AJS.namespace("JIRA.Projects.Sidebar.ProjectShortcuts.Dialogs.Edit",null,require("jira/projects/sidebar/project-shortcuts/dialogs/edit"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/dialogs/Add.js' */
+define("jira/projects/sidebar/project-shortcuts/dialogs/add","aui/inline-dialog jira/projects/sidebar/project-shortcuts/views/add-dialog-content jira/projects/sidebar/project-shortcuts/entities/shortcut jira/projects/sidebar/project-shortcuts/entities/shortcut-errors jira/projects/libs/marionette underscore jquery".split(" "),function(h,k,e,l,m,n,c){return m.Controller.extend({initialize:function(b){n.bindAll(this,"hide","refresh","focusForm");var a=this;this.analyticsSave=!1;this.sidebarItem=b.sidebarItem;
+this.projectKey=b.projectKey;this.collection=b.collection;this.model=new e(null,{projectKey:this.projectKey});this.errorModel=new l(null,{model:this.model});this.view=new k({model:this.model,errorModel:this.errorModel});this.view.render();var d=c(window),f=c(document),g=c(".aui-sidebar-body");this.dialog=new h(this.sidebarItem.ui.link,"project-shortcuts-group__add-dialog",function(p,q,b){a.sidebarItem.$el.addClass("aui-nav-selected");a.view.render();a.view.$el.appendTo(p);a.view.ui.url.focus();d.on("scroll.project-shortcuts",
+function(){a.refresh()});g.on("scroll.project-shortcuts",function(){a.hide()});f.on("showLayer",a.focusForm);d.on("resize",a.refresh);b();return!1},{gravity:"w",autoWidth:!0,initCallback:function(){a.trigger("dialog:open");a.analyticsSave=!1},hideCallback:function(){a.sidebarItem.$el.removeClass("aui-nav-selected");a.sidebarItem.ui.link.blur();d.off("scroll.project-shortcuts");g.off("scroll.project-shortcuts");f.off("showLayer",a.focusForm);a.trigger("dialog:close",a.analyticsSave)},persistent:!0,
+closeOnTriggerClick:!0,offsetY:function(a,b){b=b.target.height();return a.height()/2-b-10},arrowOffsetY:function(a,b){b=b.target.height()/2;return-(a.height()/2)+22+b}});b=this.dialog.find(".contents");b.off("mouseenter");b.off("mouseleave");this.listenTo(this.view,"render",this.refresh);this.listenTo(this.view,"cancel",this.hideAndRender);this.listenTo(this.model,"save:success",function(){var a=new e(this.model.toJSON(),{projectKey:this.projectKey});this.model.clear();this.collection.add(a);this.collection.fetch();
+this.analyticsSave=!0;this.hide()});this.listenTo(this.sidebarItem,"before:select",function(a){a.preventDefault()});this.sidebarItem.ui.link.on("keydown",function(b){if(" "===b.key||"Enter"===b.key)b.preventDefault(),a.dialog.show()});AJS.sidebar(".aui-sidebar").on("collapse-start",this.hide);c(".project-shortcuts-group").on("click","li",this.hide)},hide:function(){this.view.hideIconPicker();this.dialog.hide()},refresh:function(){this.view.hideIconPicker();this.dialog.refresh()},hideAndRender:function(){this.hide()},
+focusForm:function(){this.view.ui.url.focus()}})});AJS.namespace("JIRA.Projects.Sidebar.ProjectShortcuts.Dialogs.Add",null,require("jira/projects/sidebar/project-shortcuts/dialogs/add"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/views/Shortcut.js' */
+define("jira/projects/sidebar/project-shortcuts/views/shortcut","jira/projects/sidebar/project-shortcuts/templates jira/projects/sidebar/project-shortcuts/services/available-icons jira/projects/sidebar/project-shortcuts/dialogs/edit jira/projects/sidebar/project-shortcuts/dialogs/delete jira/projects/libs/marionette underscore jquery".split(" "),function(f,d,g,h,k,c,e){return k.ItemView.extend({template:f.shortcut,initialize:function(){c.bindAll(this,"toggleDropdown");this.iconFactory=d;this.orderingEnabled=
+this.options.orderingEnabled;this.listView=this.options.listView},ui:{del:".project-shortcuts-group__actions__delete",edit:".project-shortcuts-group__actions__edit",moveUp:".project-shortcuts-group__actions__move-up",moveDown:".project-shortcuts-group__actions__move-down",trigger:".project-shortcuts-group__actions",dropdown:".project-shortcuts-group__dropdown",link:".project-shortcuts-group__link"},modelEvents:{change:"render"},events:{"click @ui.link":function(){this.trigger("click:link",this.model)}},
+setSequence(a){var b=this.model.collection.indexOf(this.model);a=a(b);this.model.set("sequence",a);this.model.save().always(()=>this.model.collection.fetch())},onRender:function(){var a=this;this.unwrapTemplate();e(window);e(".aui-sidebar-body");a.listView.getLastDroppedId()===this.model.id&&(a.$el.addClass("project-shortcut-dropped"),a.$el.one("focusout",()=>{a.$el.removeClass("project-shortcut-dropped")}),c.defer(()=>{this.ui.link.focus();a.listView.setLastDroppedId(null)}));this.ui.edit.on("click keydown",
+function(b){if("click"===b.type||"keydown"===b.type&&(" "===b.key||"Enter"===b.key))b.preventDefault(),a.ui.trigger.blur(),b=new g({model:a.model}),a.trigger("edit:open",a.model),a.listenToOnce(b,"dialog:close",function(b){a.trigger("edit:close",a.model,b)})});this.ui.del.on("click keydown",function(b){if("click"===b.type||"keydown"===b.type&&(" "===b.key||"Enter"===b.key))b.preventDefault(),a.ui.trigger.blur(),new h({model:a.model})});this.ui.moveUp.on("click keydown",function(b){if("click"===b.type||
+"keydown"===b.type&&(" "===b.key||"Enter"===b.key))b.preventDefault(),a.setSequence(a=>a-1),a.listView.setLastDroppedId(a.model.id)});this.ui.moveDown.on("click keydown",function(b){if("click"===b.type||"keydown"===b.type&&(" "===b.key||"Enter"===b.key))b.preventDefault(),a.setSequence(a=>a+1),a.listView.setLastDroppedId(a.model.id)});this.ui.dropdown.on({"aui-dropdown2-show":function(){a.$el.addClass("aui-nav-selected")},"aui-dropdown2-hide":function(){a.$el.removeClass("aui-nav-selected")}})},serializeData:function(){var a=
+c.extend(this.model.toJSON(),{canManage:!0,isWithIcon:this.iconFactory.isWithIcons(),orderingEnabled:this.orderingEnabled});this.iconFactory.isWithIcons()&&(a=c.extend(a,{iconsMap:d.getIconsMap()}));return a},toggleDropdown:function(){this.ui.trigger.trigger("aui-button-invoke")}})});AJS.namespace("JIRA.Projects.Sidebar.ProjectShortcuts.Views.Shortcut",null,require("jira/projects/sidebar/project-shortcuts/views/shortcut"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts', location = '/sidebar/project-shortcuts/views/ShortcutsList.js' */
+define("jira/projects/sidebar/project-shortcuts/views/list","jira/api/projects/sidebar jira/projects/sidebar/project-shortcuts/templates jira/projects/sidebar/project-shortcuts/views/shortcut jira/projects/sidebar/project-shortcuts/dialogs/add jira/projects/sidebar/component/navigation-group jira/projects/libs/marionette jquery".split(" "),function(e,f,g,h,k,l,d){return l.CompositeView.extend({template:f.content,childView:g,childViewOptions:function(a,b){return{orderingEnabled:this.orderingEnabled,
+listView:this}},ui:{itemsContainer:".aui-nav",description:".project-shortcuts-group__description",add:".project-shortcuts-group__add"},collectionEvents:{"add remove":function(){if(0===this.collection.length&&0!==this.lastCollectionLength||0!==this.collection.length&&0===this.lastCollectionLength)this.lastCollectionLength=this.collection.length,this.ui.description.toggleClass("hidden",0<this.collection.length),this.$el.toggleClass("project-shortcuts-group_empty",0===this.collection.length)}},_lastDroppedId:null,
+getLastDroppedId:function(){return this._lastDroppedId},setLastDroppedId:function(a){this._lastDroppedId=a},initialize:function(){var a=this;e.getSidebar().done(function(b){b=b.getAUISidebar();b.on("expand-end",function(){d(".aui-sidebar-submenu-dialog .project-shortcuts-group__dropdown").remove()});b.on("collapse-start",function(){a.$(".project-shortcuts-group__actions.aui-dropdown2-active").trigger("aui-button-invoke")})});this.orderingEnabled=this.options.orderingEnabled;this.lastCollectionLength=
+this.collection.length},attachElContent:function(a){var b=new k({el:a});this.$el=d(b.getElement());e.getSidebar().done(function(a){a.replaceGroup(this.options.targetGroup,b)}.bind(this));return this},moveItem:function(a,b){a=this.collection.at(a);a.set("sequence",b);a.save().always(()=>this.collection.fetch())},onRender:function(){e.getSidebar().done(function(a){a=new h({sidebarItem:a.getGroup("project-shortcuts-group").getItem("project-shortcut-add"),projectKey:this.collection.projectKey,collection:this.collection});
+this.listenTo(a,"dialog:open",function(){this.trigger("add:open")});this.listenTo(a,"dialog:close",function(a){this.trigger("add:close",a)});this.orderingEnabled&&this.$(".aui-nav.project-shortcuts-list").sortable({revert:!1,items:".project-shortcut",placeholder:"ui-sortable-placeholder",cancel:".project-shortcuts-group__dropdown",update:(a,c)=>{a=d(c.item).data("dragFromIdx");var b=this.collection.at(a);this.moveItem(a,c.item.index());this.setLastDroppedId(b.id)},start:(a,c)=>{this.setLastDroppedId(null);
+d(c.item).data("dragFromIdx",c.item.index())}})}.bind(this))},serializeData:function(){return{canManage:!0,numberOfShortcuts:this.collection.length,orderingEnabled:this.orderingEnabled}},attachBuffer:function(a,b){this.ui.itemsContainer.prepend(b)},onAddChild:function(a){this.ui.add.parent().before(a.$el)}})});AJS.namespace("JIRA.Projects.Sidebar.ProjectShortcuts.Views.List",null,require("jira/projects/sidebar/project-shortcuts/views/list"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar-project-shortcuts-init', location = '/sidebar/project-shortcuts/project-shortcuts-init.js' */
+define("jira/projects/sidebar/project-shortcuts/init","jira/projects/sidebar/project-shortcuts/analytics jira/projects/sidebar/project-shortcuts/views/list jira/projects/sidebar/project-shortcuts/services/available-icons jira/projects/sidebar/project-shortcuts/entities/shortcuts jira/api/projects/sidebar jira/api/projects wrm/data".split(" "),function(c,g,f,h,d,k,b){return{init:function(){d.getSidebar().done(function(d){c.initialize(b.claim("com.atlassian.jira.projects.shortcuts:project-id"));if(b.claim("com.atlassian.jira.projects.shortcuts:can-manage")){var a=
+b.claim("com.atlassian.jira.projects.shortcuts:with-icons");a&&f.initialize(b.claim("com.atlassian.jira.projects.shortcuts:icons-list"));f.setWithIcons(a);a=b.claim("com.atlassian.jira.projects.shortcuts:ordering-enabled");var e=k.getCurrentProjectKey();e=new h(b.claim("com.atlassian.jira.projects.shortcuts:shortcuts"),{projectKey:e});a=new g({collection:e,targetGroup:"project-shortcuts-group",orderingEnabled:a});a.render();c.initDialogActions(a)}c.initShortcutClick(".project-shortcuts-list",d)})}}});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar', location = '/sidebar/sidebar-component-init.js' */
+define("jira/projects/sidebar/sidebar-component-initializer",["require"],function(a){function e(a){a.id="sidebar"}function f(a){a.setAttribute("aria-label","\u0411\u043e\u043a\u043e\u0432\u0430\u044f \u043f\u0430\u043d\u0435\u043b\u044c")}const l=a("jira/util/logger"),d=a("wrm/data"),h=a("jira/api/projects"),k=a("jira/api/projects/sidebar"),m=a("jira/project/types/warning/dialog"),n=a("jira/projects/sidebar/lastvisited/updater"),p=a("jira/projects/sidebar/component"),q=a("jira/projects/sidebar/analytics/analytics"),r=a("jira/projects/sidebar/analytics/hash"),
+t=a("jira/projects/sidebar/scopefilter/init"),u=a("wrm/context-path"),c=a("jquery"),v=a("underscore"),g=a("jira/util/formatter"),w=a("jira/projects/sidebar/project-shortcuts/init"),x="NONE com.atlassian.jira.jira-projects-plugin:project-issue-search-link com.atlassian.jira.jira-projects-plugin:components-page com.atlassian.jira.jira-projects-plugin:reports-panel com.atlassian.jira.jira-projects-plugin:summary-panel com.atlassian.jira.jira-projects-plugin:summary-page com.atlassian.jira.jira-projects-plugin:components-page com.atlassian.jira.jira-projects-plugin:release-page com.atlassian.jira.jira-projects-plugin:release-sidebar-version- com.atlassian.jira.jira-projects-plugin:report-page com.pyxis.greenhopper.jira:global-sidebar-report com.pyxis.greenhopper.jira:global-sidebar-plan-scrum com.pyxis.greenhopper.jira:global-sidebar-work-scrum com.pyxis.greenhopper.jira:global-sidebar-work-kanban com.pyxis.greenhopper.jira:project-sidebar-plan-scrum com.pyxis.greenhopper.jira:project-sidebar-work-scrum com.pyxis.greenhopper.jira:project-sidebar-work-kanban com.atlassian.jira.jira-projects-issue-navigator:embedded-issue-navigator-link com.atlassian.jira.jira-projects-issue-navigator:sidebar-issue-navigator".split(" ");
+return{init:function(a){function y(a){function b(){a.getAUISidebar().reflow()}setTimeout(b,200);setInterval(b,3E5)}k.initAPI(new p({el:a.$el[0],isGlobalSidebar:d.claim("is-global-sidebar")}));v(x).each(r.addPrefix);q.register();(function(a){a.on("collapse-start",function(){const b=a.$el.find(".scope-filter-trigger");b.hasClass("aui-dropdown2-active")&&b.trigger("aui-button-invoke")})})(a);(function(){m.init({data:d.claim("project.type.warning.dialogs.data"),onProjectTypeChanged:function(){const a=
+h.getCurrentProjectKey();window.location.replace(u()+"/projects/"+a+"/summary")}});l.trace("project.types.warning.messages.init")})();w.init();t.init(d.claim("scope-filter-data"));k.getSidebar().done(function(a){e(a.el);f(a.el);y(a);n.start(a)});if(c(".aui-sidebar-group-tier-one").length){const a=h.getCurrentProjectName();c(".aui-sidebar-group-tier-one .aui-nav-item").each(function(){var b=c(this).data("label");b=g.format("{0} \u043f\u0440\u043e\u0435\u043a\u0442\u0430 \u00ab{1}\u00bb",b,a);c(this).attr("aria-label",b)})}},setSidebarId:e,
+setSidebarAriaLabel:f}});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar', location = '/sidebar/sidebar-data.js' */
+define("jira/projects/sidebar/sidebar-data",["wrm/data"],function(a){return{rapidViewId:a.claim("sidebar-rapid-view-id"),isGlobalBoard:a.claim("has-global-board-sidebar")}});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:sidebar', location = '/sidebar/sidebar-init.js' */
+require("wrm/require wrm/context-path jira/api/projects jira/issue jira/util/logger jira/projects/sidebar/expansion-manager jira/ajs/ajax/smart-ajax jira/projects/sidebar/sidebar-component-initializer jira/projects/sidebar/sidebar-data".split(" "),function(f,l,e,g,d,m,h,n,k){function p(){var b=!0===k.isGlobalBoard;var a=g.getIssueKey(),c="projects/1.0/sidebar/project/"+e.getCurrentProjectKey();a&&(c="projects/1.0/sidebar/issue/"+a);b&&(c="greenhopper/1.0/sidebar/globalBoard");b=c;a=new URLSearchParams;
+(c=e.lazilyGetSelectedItemId())&&a.append("selectedItem",c);(c=k.rapidViewId)&&a.append("rapidViewId",c);return`${l()}/rest/${b}?${a.toString()}`}(function(){const b=e.getCurrentProjectType(),a=[];b&&a.push("wrc!jira.project.sidebar."+b);return f(a)})().then(function(){return h.makeRequest({url:p(),complete:function(b,a,c){c.successful?(b=c.data,a=document.querySelector(".aui-sidebar"),c=document.createRange(),c.selectNode(a),a.replaceWith(c.createContextualFragment(b.html))):h.buildDialogErrorContent(c)}})}).then(function(){const b=
+AJS.sidebar(".aui-sidebar");m(b);n.init(b);d.trace("jira.projects.sidebar.init",{dclFired:"complete"===document.readyState||"loaded"===document.readyState||"interactive"===document.readyState})}).catch(function(b){d.error("Error while rendering sidebar. Message:",b);f(["wr!jira.webresources:jira-formatter","wr!jira.webresources:messages","wr!jira.webresources:jira-analytics-amd"],function(){const a=require("jira/util/formatter"),c=require("jira/flag"),b=require("jira/analytics"),d=document.createElement("a");
+d.setAttribute("href",window.location.href);d.textContent="\u041e\u0431\u043d\u043e\u0432\u0438\u0442\u044c \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0443";c.showWarningMsg("",a.format("\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0431\u043e\u043a\u043e\u0432\u0443\u044e \u043f\u0430\u043d\u0435\u043b\u044c \u043f\u0440\u043e\u0435\u043a\u0442\u0430. {0}, \u0447\u0442\u043e\u0431\u044b \u043f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c \u043f\u043e\u043f\u044b\u0442\u043a\u0443.",d.outerHTML)+"\x3cbr /\x3e"+"\u0415\u0441\u043b\u0438 \u043f\u0440\u043e\u0431\u043b\u0435\u043c\u0430 \u043d\u0435 \u0438\u0441\u0447\u0435\u0437\u043d\u0435\u0442, \u043e\u0431\u0440\u0430\u0442\u0438\u0442\u0435\u0441\u044c \u043a \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u0443 Jira.");b.send({name:"jira.projects.sidebar.render.error",properties:{projectId:e.getCurrentProjectId(),issueId:g.getIssueId()}})}).fail(function(){d.error("Failed to display sidebar error message due to error when loading WRM dependencies.")})})});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:report-page-assets', location = '/page/project/report/analytics.js' */
+define("jira/projects/page/report/analytics",["jira/analytics","jquery"],function(c,b){return function(){b(".reports .reports__list__report").on("click",function(a){a=b(this);c.send({name:"jira.projects.report.clicked",data:{report:a.attr("data-report-key"),category:a.closest("ul").attr("data-category-key"),listPosition:a.closest("li").prevAll().length+1}})})}});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:reports-link-storage', location = '/sidebar/reports/reports-link-storage.js' */
+define("jira/projects/sidebar/reports/link-storage",["jira/util/logger","jira/data/local-storage","jira/api/projects","jira/api/projects/sidebar"],function(d,e,g,c){function f(a){a=a.getSelectedScopeFilterId();var b="last.viewed.report."+g.getCurrentProjectKey();a&&(b+="."+a);return b}return{storeLastViewedReportLink:function(a){c.getSidebar().done(function(b){if(b.isProjectSidebar()){var c=f(b);e.setItem(c,a);b.setReportsItemLink(a)}d.trace("jira.projects.sidebar.reports.link.stored")})},restoreLastViewedReportLink:function(){c.getSidebar().done(function(a){if(a.isProjectSidebar()){var b=
+f(a);(b=e.getItem(b))&&a.setReportsItemLink(b)}d.trace("jira.projects.sidebar.reports.link.restored")})}}});
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.atlassian.jira.jira-projects-plugin:reports-link-init', location = '/sidebar/reports/reports-link-init.js' */
+require(["jira/projects/sidebar/reports/link-storage"],function(a){a.restoreLastViewedReportLink()});AJS.namespace("JIRA.Projects.Sidebar.Reports",null,require("jira/projects/sidebar/reports/link-storage"));
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.pyxis.greenhopper.jira:split_sidebar', location = 'sidebar.7a9ad0eb4c7bf0cdaf43.js' */
+(window.atlassianWebpackJsonpfbf65a2811294b5bb986808ed460db71=window.atlassianWebpackJsonpfbf65a2811294b5bb986808ed460db71||[]).push([[154],{575:function(a,n,b){"use strict";var t,o,i;t=b(267),o=b(158),i=b(1),b(576),b(132),o((function(){i("body").on("click",".js-create-board",(function(a){a.preventDefault(),t.startWizard()}))}))},576:function(a,n,b){a.exports=void 0}},[[575,0,37,1,2,3,4,6,5,7,8,9,10,11,12,13,14,15,16,17,19,21,23,24,25,28,30,31,36,38,42,48,60,62,63]]]);
+}catch(e){WRMCB(e)};

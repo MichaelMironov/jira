@@ -1,0 +1,13 @@
+2024-03-20 13:43:48,833+0000 http-nio-8080-exec-2 anonymous 823x2x1 - 172.17.0.1 /secure/SetupMode!default.jspa HttpSession created [15f9cee]
+2024-03-20 13:45:00,658+0000 http-nio-8080-exec-3 anonymous 825x188x1 - 172.17.0.1 /secure/SetupMode!default.jspa HttpSession created [1ycjyex]
+2024-03-20 13:45:47,640+0000 AsynchronousJiraSetup      Jira 9.14.1 build: 9140001 started. You can now access Jira through your web browser. Plugins and caches are being initialised.
+2024-03-20 14:01:27,123+0000 http-nio-8080-exec-10 url: /secure/admin/WebSudoAuthenticate.jspa; user: nemiron94 nemiron94 841x753x1 15f9cee 172.17.0.1 /secure/admin/WebSudoAuthenticate.jspa The user 'nemiron94' has PASSED authentication.
+2024-03-20 14:01:27,147+0000 http-nio-8080-exec-10 url: /secure/admin/WebSudoAuthenticate.jspa; user: nemiron94 nemiron94 841x753x1 15f9cee 172.17.0.1 /secure/admin/WebSudoAuthenticate.jspa HttpSession [15f9cee] destroyed for 'nemiron94'
+2024-03-20 14:01:27,148+0000 http-nio-8080-exec-10 url: /secure/admin/WebSudoAuthenticate.jspa; user: nemiron94 nemiron94 841x753x1 15f9cee 172.17.0.1 /secure/admin/WebSudoAuthenticate.jspa HttpSession created [10jmgra]
+2024-03-20 16:33:06,161+0000 http-nio-8080-exec-1 url: /secure/admin/WebSudoAuthenticate.jspa; user: nemiron94 nemiron94 993x880x1 10jmgra 172.17.0.1 /secure/admin/WebSudoAuthenticate.jspa The user 'nemiron94' has PASSED authentication.
+2024-03-20 16:33:06,206+0000 http-nio-8080-exec-1 url: /secure/admin/WebSudoAuthenticate.jspa; user: nemiron94 nemiron94 993x880x1 10jmgra 172.17.0.1 /secure/admin/WebSudoAuthenticate.jspa HttpSession [10jmgra] destroyed for 'nemiron94'
+2024-03-20 16:33:06,206+0000 http-nio-8080-exec-1 url: /secure/admin/WebSudoAuthenticate.jspa; user: nemiron94 nemiron94 993x880x1 10jmgra 172.17.0.1 /secure/admin/WebSudoAuthenticate.jspa HttpSession created [s341no]
+2024-03-20 17:13:21,731+0000 http-nio-8080-exec-8 url: /secure/admin/WebSudoAuthenticate.jspa; user: nemiron94 nemiron94 1033x1000x1 s341no 172.17.0.1 /secure/admin/WebSudoAuthenticate.jspa The user 'nemiron94' has PASSED authentication.
+2024-03-20 17:13:21,734+0000 http-nio-8080-exec-8 url: /secure/admin/WebSudoAuthenticate.jspa; user: nemiron94 nemiron94 1033x1000x1 s341no 172.17.0.1 /secure/admin/WebSudoAuthenticate.jspa HttpSession [s341no] destroyed for 'nemiron94'
+2024-03-20 17:13:21,735+0000 http-nio-8080-exec-8 url: /secure/admin/WebSudoAuthenticate.jspa; user: nemiron94 nemiron94 1033x1000x1 s341no 172.17.0.1 /secure/admin/WebSudoAuthenticate.jspa HttpSession created [11abx9p]
+2024-03-20 18:45:44,421+0000 Catalina-utility-1      HttpSession [1ycjyex] destroyed for 'anonymous'

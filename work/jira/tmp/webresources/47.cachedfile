@@ -1,0 +1,6 @@
+WRMCB=function(e){var c=console;if(c&&c.log&&c.error){c.log('Error running batched script.');c.error(e);}}
+;
+try {
+/* module-key = 'com.atlassian.jira.plugins.jira-quicksearch-plugin:0', location = 'frontend/bundle.0.js' */
+(window.atlassianWebpackJsonpe5ed4b01bb42b7893d8aef5bda9bf664=window.atlassianWebpackJsonpe5ed4b01bb42b7893d8aef5bda9bf664||[]).push([[0],{12:function(e,n,t){"use strict";Object.defineProperty(n,"__esModule",{value:!0}),n.spinStart=function(){i().addClass(s.QUICK_SEARCH_PARENT_LOADING_CLASS),u().spin()},n.spinStop=function(){i().removeClass(s.QUICK_SEARCH_PARENT_LOADING_CLASS),u().spinStop()};var a,o=t(0),r=(a=o)&&a.__esModule?a:{default:a},s=function(e){if(e&&e.__esModule)return e;var n={};if(null!=e)for(var t in e)Object.prototype.hasOwnProperty.call(e,t)&&(n[t]=e[t]);return n.default=e,n}(t(2));function u(){return(0,r.default)(s.QUICK_SEARCH_SPINNER_LOCATOR_CLASS)}function i(){return(0,r.default)(s.QUICK_SEARCH_INPUT_LOCATOR).parent()}t(38)},38:function(e,n,t){e.exports=void 0}}]);
+}catch(e){WRMCB(e)};

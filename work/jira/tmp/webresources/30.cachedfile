@@ -1,0 +1,11 @@
+WRMCB=function(e){var c=console;if(c&&c.log&&c.error){c.log('Error running batched script.');c.error(e);}}
+;
+try {
+/* module-key = 'com.pyxis.greenhopper.jira:split_gh-flexible-boards', location = 'gh-flexible-boards.aadb77858c95215331d1.js' */
+(window.atlassianWebpackJsonpfbf65a2811294b5bb986808ed460db71=window.atlassianWebpackJsonpfbf65a2811294b5bb986808ed460db71||[]).push([[112],{706:function(o,a,n){"use strict";var b,d;b=n(1),(d=n(6)).on("pool-column-updated",(function(){var o=b(".ghx-columns"),a=b("#ghx-pool-column");o.width()>a.width()&&d.trigger("flexible-boards-discovery-launch")}))}},[[706,0,1,20]]]);
+}catch(e){WRMCB(e)};
+;
+try {
+/* module-key = 'com.pyxis.greenhopper.jira:split_jira-agile-work-mode', location = 'jira-agile-work-mode.f6c23030343cc064a75d.js' */
+(window.atlassianWebpackJsonpfbf65a2811294b5bb986808ed460db71=window.atlassianWebpackJsonpfbf65a2811294b5bb986808ed460db71||[]).push([[149],{786:function(b,a,n){"use strict";n(33),n(293),n(278),n(280),n(189),n(259),n(291),n(281),n(287),n(286),n(285),n(246),n(787)},787:function(b,a,n){b.exports=void 0}},[[786,0,37,1,2,3,4,6,5,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,28,27,26,29,30,33,31,36,34,32,35,38,39,40,41,42,44,43,46,45,48,47,49,50,51,53,55,57,56,52,54,58,59]]]);
+}catch(e){WRMCB(e)};
