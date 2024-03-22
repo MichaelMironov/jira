@@ -32,9 +32,9 @@ class IssueTest {
     @Throws(IOException::class)
     fun initDriver() {
         SelenideLogger.addListener("Allure listener", AllureSelenide())
-        val firefoxOptions = FirefoxOptions()
-        firefoxOptions.setBinary("resources/drivers/geckodriver")
-        WebDriverRunner.setWebDriver(FirefoxDriver(firefoxOptions))
+//        val firefoxOptions = FirefoxOptions()
+        System.setProperty("webdriver.gecko.driver", "src/test/resources/drivers/geckodriver")
+//        WebDriverRunner.setWebDriver(FirefoxDriver(firefoxOptions))
 
 //        val url = "http://192.168.90.245:4444/wd/hub"
 //        val chromeOptions = ChromeOptions()
