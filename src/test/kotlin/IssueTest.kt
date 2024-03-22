@@ -1,5 +1,3 @@
-package ui
-
 import com.codeborne.selenide.Selectors.byText
 import com.codeborne.selenide.Selenide.*
 import com.codeborne.selenide.WebDriverRunner
