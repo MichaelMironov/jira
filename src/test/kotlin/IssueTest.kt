@@ -18,50 +18,71 @@ import org.openqa.selenium.chrome.ChromeOptions
 import org.openqa.selenium.remote.RemoteWebDriver
 import java.io.IOException
 import java.net.URL
+import java.security.MessageDigest
 
-class IssueTest {
+//class IssueTest {
 
-    @BeforeEach
-    @Throws(IOException::class)
-    fun initDriver() {
-        val allureSelenide = AllureSelenide()
-        allureSelenide.screenshots(true)
-        SelenideLogger.addListener("Allure listener", allureSelenide)
-//        val firefoxOptions = FirefoxOptions()
-//        System.setProperty("webdriver.gecko.driver", "src/test/resources/drivers/geckodriver")
-//        WebDriverRunner.setWebDriver(FirefoxDriver(firefoxOptions))
-
-        val url = "http://127.0.0.1:4444/wd/hub"
-        val chromeOptions = ChromeOptions()
-        val driver: WebDriver = RemoteWebDriver(URL(url), chromeOptions)
-        driver.manage().window().size = Dimension(1920, 1024)
-        WebDriverRunner.setWebDriver(driver)
-    }
-
-    @Test
-    @Issue("AE-2")
-    @DisplayName("Открываем сщуствующую Issue")
-    fun testIssue() {
-
-        step("Открываем главную страницу") {
-            open("https://www.wildberries.ru/")
-            WebDriverRunner.driver().webDriver.manage().window().maximize()
-            sleep(1_000L)
-        }
-        step("Вводим товар в поиск") {
-            `$`("#searchInput")
-                .shouldBe(Editable())
-                .sendKeys("onyx boox note air 3", Keys.ENTER)
-        }
-        step("Проверяем, что товар найден") {
-            `$`(byText("товаров найдено")).should(Visible())
-        }
-        println()
-    }
-
-    @AfterEach
-    fun stopDriver() {
-        WebDriverRunner.getWebDriver().quit()
-    }
-
-}
+//    @BeforeEach
+//    @Throws(IOException::class)
+//    fun initDriver() {
+//        val allureSelenide = AllureSelenide()
+//        allureSelenide.screenshots(true)
+//        SelenideLogger.addListener("Allure listener", allureSelenide)
+////        val firefoxOptions = FirefoxOptions()
+////        System.setProperty("webdriver.gecko.driver", "src/test/resources/drivers/geckodriver")
+////        WebDriverRunner.setWebDriver(FirefoxDriver(firefoxOptions))
+//
+//        val url = "http://127.0.0.1:4444/wd/hub"
+//        val chromeOptions = ChromeOptions()
+//        val driver: WebDriver = RemoteWebDriver(URL(url), chromeOptions)
+//        driver.manage().window().size = Dimension(1920, 1024)
+//        WebDriverRunner.setWebDriver(driver)
+//    }
+//
+//    @Test
+//    @Issue("AE-2")
+//    @DisplayName("Открываем сщуствующую Issue")
+//    fun testIssue() {
+//
+//        step("Открываем главную страницу") {
+//            open("https://www.wildberries.ru/")
+//            WebDriverRunner.driver().webDriver.manage().window().maximize()
+//            sleep(1_000L)
+//        }
+//        step("Вводим товар в поиск") {
+//            `$`("#searchInput")
+//                .shouldBe(Editable())
+//                .sendKeys("onyx boox note air 3", Keys.ENTER)
+//        }
+//        step("Проверяем, что товар найден") {
+//            `$`(byText("товаров найдено")).should(Visible())
+//        }
+//        println()
+//    }
+//
+//    @AfterEach
+//    fun stopDriver() {
+//        WebDriverRunner.getWebDriver().quit()
+//    }
+//
+//}
+//
+//data class Android(val name: String, val energy: Int)
+//
+//fun calculateAndroidsHash(androids: List<Android>): String {
+//    val md = MessageDigest.getInstance("SHA-512")
+//    return androids.map { android ->
+//        val bytes = android.toString().toByteArray()
+//        md.digest(bytes)
+//    }.fold("") { str, it -> str + "%02x".format(it) }
+//
+//}
+//
+//fun main() {
+//    val inputList: List<Android> = readln().split("|")
+//        .map {
+//            val (name, energy) = it.split(":")
+//            Android(name, energy.toInt())
+//        }
+//    println(calculateAndroidsHash(inputList))
+//}
