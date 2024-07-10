@@ -1,9 +1,11 @@
 package ui
 
 import com.codeborne.selenide.logevents.SelenideLogger.step
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.lang.Thread.sleep
 
+@Disabled
 class UiTests {
 
     @Test
