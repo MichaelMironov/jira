@@ -28,7 +28,6 @@ allure {
 dependencies {
     //Selenide
     implementation "com.codeborne:selenide:${selenideVersion}"
-    testImplementation 'com.xpandit.xray:xray-testng-extensions:1.1.0'
 
     //Jupiter
     testImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
