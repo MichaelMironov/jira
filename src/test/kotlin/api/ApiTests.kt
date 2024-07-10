@@ -8,7 +8,7 @@ import java.lang.Thread.sleep
 class ApiTests {
 
     @Test
-    @Issue("AVTO-1")
+    @Issue("AVTO-3")
     fun firstApiTest() {
         step("[STEP #1]") {
             sleep(5_000L)
