@@ -2,7 +2,6 @@ package api
 
 import com.codeborne.selenide.logevents.SelenideLogger.step
 import io.qameta.allure.Issue
-import java.security.MessageDigest
 import org.junit.jupiter.api.Test
 import java.lang.Thread.sleep
 
@@ -22,6 +21,7 @@ class ApiTests {
     fun secondApiTest() {
         step("[STEP #1]") {
             sleep(5_000L)
+            throw RuntimeException("")
             println("API TEST #2")
         }
     }
